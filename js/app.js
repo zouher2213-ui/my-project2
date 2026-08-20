@@ -741,10 +741,21 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAdminDashboard();
   }
 
+  let activeLiveUnsubscribe = null;
+
   async function renderAdminDashboard() {
     const tickets = await db.getAllTickets();
     updateAdminStats(tickets);
     renderAdminTable(tickets);
+
+    // Enable Real-Time Live Refresh across all devices via Cloud Firestore
+    if (db.subscribeTickets && !activeLiveUnsubscribe) {
+      activeLiveUnsubscribe = db.subscribeTickets((liveTickets) => {
+        console.log("🔥 [Live Refresh] Admin dashboard updated live without page reload!");
+        updateAdminStats(liveTickets);
+        renderAdminTable(liveTickets);
+      });
+    }
   }
 
   function updateAdminStats(tickets) {
