@@ -63,7 +63,7 @@ function saveLocalTickets(tickets) {
 }
 
 // 1. Warehouse Data Storage Function
-window.saveWarehouseData = async function(formData) {
+window.saveWarehouseData = async function (formData) {
   if (isFirebaseLive && dbFirestore) {
     try {
       const docRef = await dbFirestore.collection("warehouse_data").add({
@@ -81,13 +81,13 @@ window.saveWarehouseData = async function(formData) {
 };
 
 // 2. Gulfmakers Maintenance System Database Interface
-window.GulfmakersDB = (function() {
+window.GulfmakersDB = (function () {
   return {
-    isLiveMode: function() {
+    isLiveMode: function () {
       return isFirebaseLive;
     },
 
-    subscribeTickets: function(callback) {
+    subscribeTickets: function (callback) {
       if (isFirebaseLive && dbFirestore) {
         try {
           return dbFirestore.collection('tickets').onSnapshot((snapshot) => {
@@ -105,7 +105,7 @@ window.GulfmakersDB = (function() {
       return null;
     },
 
-    checkActiveDuplicateTicket: async function(fasahNumber, contractPhone) {
+    checkActiveDuplicateTicket: async function (fasahNumber, contractPhone) {
       const cleanFasah = fasahNumber ? fasahNumber.trim().toUpperCase() : '';
       const cleanPhone = contractPhone ? contractPhone.trim() : '';
 
@@ -161,7 +161,7 @@ window.GulfmakersDB = (function() {
       return null;
     },
 
-    createTicket: async function(ticketData) {
+    createTicket: async function (ticketData) {
       const trackingNumber = `GM-2026-${Math.floor(10000 + Math.random() * 90000)}`;
       const now = new Date().toISOString();
 
@@ -199,7 +199,7 @@ window.GulfmakersDB = (function() {
       return newTicket;
     },
 
-    getTicketByTrackingNumber: async function(trackingNumber) {
+    getTicketByTrackingNumber: async function (trackingNumber) {
       const cleanId = trackingNumber.trim().toUpperCase();
 
       if (isFirebaseLive && dbFirestore) {
@@ -217,7 +217,7 @@ window.GulfmakersDB = (function() {
       return tickets.find(t => t.id.toUpperCase() === cleanId) || null;
     },
 
-    getTicketsByPhone: async function(phone) {
+    getTicketsByPhone: async function (phone) {
       const cleanPhone = phone.trim();
 
       if (isFirebaseLive && dbFirestore) {
@@ -237,7 +237,7 @@ window.GulfmakersDB = (function() {
       return tickets.filter(t => t.contractPhone === cleanPhone);
     },
 
-    getAllTickets: async function() {
+    getAllTickets: async function () {
       if (isFirebaseLive && dbFirestore) {
         try {
           const snapshot = await dbFirestore.collection('tickets').get();
@@ -254,7 +254,7 @@ window.GulfmakersDB = (function() {
       return tickets;
     },
 
-    deleteTicket: async function(trackingNumber) {
+    deleteTicket: async function (trackingNumber) {
       const cleanId = trackingNumber.trim().toUpperCase();
 
       if (isFirebaseLive && dbFirestore) {
@@ -272,7 +272,7 @@ window.GulfmakersDB = (function() {
       return true;
     },
 
-    updateTicketStatus: async function(trackingNumber, newStatus, technicianNotes, rejectionReason) {
+    updateTicketStatus: async function (trackingNumber, newStatus, technicianNotes, rejectionReason) {
       const cleanId = trackingNumber.trim().toUpperCase();
       const isActive = (newStatus === 'Under Review' || newStatus === 'In Progress');
       const now = new Date().toISOString();
@@ -308,7 +308,7 @@ window.GulfmakersDB = (function() {
       return { success: false };
     },
 
-    loginAdmin: async function(email, password) {
+    loginAdmin: async function (email, password) {
       if (email.toLowerCase() === 'admin@gulfmakers.com' && password === 'admin123') {
         const mockUser = { email: 'admin@gulfmakers.com', uid: 'admin-local-uid' };
         localStorage.setItem('gulfmakers_admin_session', JSON.stringify(mockUser));
@@ -318,12 +318,12 @@ window.GulfmakersDB = (function() {
       }
     },
 
-    getCurrentAdmin: function() {
+    getCurrentAdmin: function () {
       const session = localStorage.getItem('gulfmakers_admin_session');
       return session ? JSON.parse(session) : null;
     },
 
-    logoutAdmin: async function() {
+    logoutAdmin: async function () {
       localStorage.removeItem('gulfmakers_admin_session');
     }
   };

@@ -886,6 +886,43 @@ document.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('editStatusModal');
     if (modal) modal.classList.add('active');
   };
+
+  // 8. Global Real-Time Live Sync Engine (Auto-updates admin and customer screens across devices)
+  let lastKnownTicketCount = -1;
+
+  if (db.subscribeTickets) {
+    db.subscribeTickets((liveTickets) => {
+      console.log("🔥 [Global Live Sync] Real-time tickets sync received across devices:", liveTickets.length);
+
+      // Toast Notification for New Ticket Arrival
+      if (lastKnownTicketCount !== -1 && liveTickets.length > lastKnownTicketCount) {
+        const latestTicket = liveTickets[0];
+        const isAr = i18n.getLanguage() === 'ar';
+        const msg = isAr 
+          ? `🔔 تم استلام طلب صيانة جديد بنجاح! كود التتبع: ${toEnglishDigits(latestTicket.id)}`
+          : `🔔 New Maintenance Request Received! Code: ${toEnglishDigits(latestTicket.id)}`;
+        showToast(msg, 'success');
+      }
+      lastKnownTicketCount = liveTickets.length;
+
+      // Auto-update Admin Dashboard if visible
+      const adminSection = document.getElementById('admin-section');
+      if (adminSection && !adminSection.classList.contains('hidden')) {
+        updateAdminStats(liveTickets);
+        renderAdminTable(liveTickets);
+      }
+
+      // Auto-update active customer tracking search view if active
+      const trackInput = document.getElementById('trackInput');
+      if (trackInput && trackInput.value.trim() !== '') {
+        const activeCode = trackInput.value.trim();
+        const updatedTicket = liveTickets.find(t => t.id.toUpperCase() === activeCode.toUpperCase());
+        if (updatedTicket) {
+          searchAndRenderTicket(activeCode);
+        }
+      }
+    });
+  }
 });
 
 // Helper functions available globally

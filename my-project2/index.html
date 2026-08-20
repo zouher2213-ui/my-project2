@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نظام الصيانة | صناع الخليج - Gulfmakers Maintenance</title>
+  
+  <!-- SEO & Brand Meta -->
+  <meta name="description" content="نظام تقديم ومتابعة طلبات الصيانة الإلكتروني لشركة صناع الخليج Gulfmakers">
+  <meta name="theme-color" content="#EE5D1B">
+  
+  <!-- Fonts: Cairo (Arabic), Inter (English), Chakra Petch (HUD Numeric) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Chakra+Petch:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Custom Gulfmakers HUD Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <div class="hud-container">
+    
+    <!-- HEADER & BRANDING SECTION -->
+    <header class="hud-header">
+      <div class="logo-wrapper">
+        <img src="logo.png" alt="Gulfmakers Logo - صناع الخليج" class="brand-logo">
+        <div class="brand-info">
+          <h1 class="brand-title" data-i18n="system_title">نظام صيانة صناع الخليج</h1>
+          <span class="brand-subtitle">GULFMAKERS MAINTENANCE HUD</span>
+        </div>
+      </div>
+      
+      <div class="header-actions">
+        <!-- Day / Night Theme Toggle Button -->
+        <button id="themeToggleBtn" class="hud-btn-outline" aria-label="Toggle Theme">
+          <i id="themeIcon" class="fa-solid fa-moon"></i>
+          <span id="currentThemeLabel">الوضع الليلي</span>
+        </button>
+
+        <!-- Bilingual Toggle Button -->
+        <button id="langToggleBtn" class="hud-btn-outline" aria-label="Toggle Language">
+          <i class="fa-solid fa-globe"></i>
+          <span id="currentLangLabel">English</span>
+        </button>
+        
+        <!-- Admin Portal Access Button -->
+        <button id="adminPortalBtn" class="hud-btn-accent">
+          <i class="fa-solid fa-user-shield"></i>
+          <span data-i18n="admin_portal">بوابة الإدارة</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN NAVIGATION TABS -->
+    <nav class="hud-nav-tabs">
+      <button class="nav-tab active" data-tab="new-request">
+        <i class="fa-solid fa-file-signature"></i>
+        <span data-i18n="tab_new_request">تقديم طلب صيانة</span>
+      </button>
+      <button class="nav-tab" data-tab="track-order">
+        <i class="fa-solid fa-magnifying-glass-location"></i>
+        <span data-i18n="tab_track_order">متابعة طلب</span>
+      </button>
+      <button class="nav-tab" data-tab="recover-tracking">
+        <i class="fa-solid fa-key"></i>
+        <span data-i18n="tab_recover_tracking">استعادة رقم التتبع</span>
+      </button>
+      <button class="nav-tab" data-tab="about">
+        <i class="fa-solid fa-building"></i>
+        <span data-i18n="tab_about">عن الشركة</span>
+      </button>
+      <button class="nav-tab" data-tab="admin">
+        <i class="fa-solid fa-user-shield"></i>
+        <span data-i18n="tab_admin_portal">لوحة الإدارة</span>
+      </button>
+    </nav>
+
+    <!-- MAIN APPLICATION CONTENT -->
+    <main class="hud-content">
+
+      <!-- ===================================================================
+           SECTION 1: CUSTOMER MAINTENANCE REQUEST FORM
+           =================================================================== -->
+      <section id="new-request-section" class="tab-content active">
+
+        <!-- Prominent Maintenance Service Policy Alert Banner -->
+        <div class="hud-alert hud-alert-info">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <div>
+            <strong data-i18n="policy_title">سياسة تقديم الصيانة:</strong>
+            <p data-i18n="policy_body">تستغرق عملية الصيانة مدة تصل إلى 15 يوم عمل.</p>
+          </div>
+        </div>
+
+        <!-- Prominent Mandatory Warning Alert Banner -->
+        <div class="hud-alert hud-alert-warning">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <div>
+            <strong data-i18n="warning_title">تنبيه هام جداً قبل الإرسال:</strong>
+            <p data-i18n="warning_body">في حال عدم إدخال رقم فسح أو رقم التواصل المدون في العقد بشكل صحيح، سيتم تجاهل ورفض طلب الصيانة.</p>
+          </div>
+        </div>
+
+        <!-- Dynamic Duplicate Request Block Alert (Shown if active duplicate ticket exists) -->
+        <div id="duplicateAlertBox" class="hud-alert hud-alert-warning hidden" style="border-width: 2px;">
+          <i class="fa-solid fa-hand-stop"></i>
+          <div>
+            <strong data-i18n="duplicate_error_title">تم رفض الطلب - يوجد طلب نشط بالفعل</strong>
+            <p>
+              <span data-i18n="duplicate_error_body">يوجد طلب صيانة نشط حالياً (قيد المراجعة أو التنفيذ) مرتبط برقم فسح أو رقم الجوال المدخل برقم تتبع: </span>
+              <strong id="duplicateTicketCode" class="ticket-number-badge" style="display:inline-block; margin-inline-start:6px;"></strong>
+            </p>
+          </div>
+        </div>
+
+        <!-- Dynamic 15-Day Cooldown Policy Alert (Shown if last ticket was less than 15 days ago) -->
+        <div id="cooldownAlertBox" class="hud-alert hud-alert-warning hidden" style="border-width: 2px; background: rgba(239, 68, 68, 0.12); border-color:#EF4444;">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <div>
+            <strong style="color:#EF4444;" data-i18n="cooldown_error_title">عذراً - لم تمضِ فترة الـ 15 يوماً على آخر طلب صيانة</strong>
+            <p style="color:var(--text-bright); margin-top:4px;">
+              <span data-i18n="cooldown_error_body">تقتضي السياسة مرور 15 يوم عمل على الأقل بين طلبات الصيانة لنفس العقد. تاريخ آخر صيانة كان: </span>
+              <strong id="cooldownLastDate" style="color:var(--brand-orange);"></strong>
+              <span> (متبقي <strong id="cooldownDaysRemaining" style="color:#EF4444;"></strong> يوم لإمكانية تقديم طلب جديد).</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Maintenance Request Form Card -->
+        <div class="hud-card">
+          <div class="hud-card-header">
+            <h2 class="hud-card-title">
+              <i class="fa-solid fa-screwdriver-wrench"></i>
+              <span data-i18n="tab_new_request">تقديم طلب صيانة</span>
+            </h2>
+          </div>
+
+          <form id="maintenanceForm" class="hud-form">
+            <div class="form-grid">
+              <!-- Fasah Number Input (Either Fasah or Phone required) -->
+              <div class="form-group">
+                <label for="fasahNumber">
+                  <i class="fa-solid fa-hashtag"></i>
+                  <span data-i18n="label_fasah">رقم فسح (رقم فسح أو الجوال مطلوب)</span>
+                </label>
+                <input type="text" id="fasahNumber" placeholder="مثال: FAS-90210" class="hud-input" autocomplete="off">
+              </div>
+
+              <!-- Contract Phone Number Input (Either Fasah or Phone required) -->
+              <div class="form-group">
+                <label for="contractPhone">
+                  <i class="fa-solid fa-phone-volume"></i>
+                  <span data-i18n="label_phone">رقم جوال العقد (رقم فسح أو الجوال مطلوب)</span>
+                </label>
+                <input type="tel" id="contractPhone" placeholder="مثال: 0501234567" class="hud-input" autocomplete="tel">
+              </div>
+
+              <!-- Customer Email Input (Mandatory for Email Notifications & Rejection) -->
+              <div class="form-group">
+                <label for="customerEmail">
+                  <i class="fa-solid fa-envelope"></i>
+                  <span data-i18n="label_customer_email">البريد الإلكتروني للعميل (إلزامي/مطلوب)</span>
+                  <span style="color:#EF4444; font-weight:bold;">*</span>
+                </label>
+                <input type="email" id="customerEmail" required placeholder="مثال: customer@gulfmakers.com" class="hud-input" autocomplete="email">
+              </div>
+            </div>
+
+            <!-- Issue Description Input -->
+            <div class="form-group">
+              <label for="issueDescription">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span data-i18n="label_description">وصف تفصيلي للمشكلة (مطلوب)</span>
+                <span style="color:#EF4444; font-weight:bold;">*</span>
+              </label>
+              <textarea id="issueDescription" rows="4" required placeholder="يرجى وصف المشكلة والمكان بدقة متناهية..." class="hud-input"></textarea>
+            </div>
+
+            <!-- Mandatory Multi-Image Upload Dropzone -->
+            <div class="form-group">
+              <label>
+                <i class="fa-solid fa-images"></i>
+                <span data-i18n="label_image">مرفق صور المشكلة (إلزامي - يمكن اختيار أكثر من صورة)</span>
+                <span style="color:#EF4444; font-weight:bold;">*</span>
+              </label>
+              <div class="file-upload-dropzone" id="dropzone">
+                <i class="fa-solid fa-cloud-arrow-up dropzone-icon"></i>
+                <p class="dropzone-text" data-i18n="dropzone_text">انقر لاختيار صورة أو أكثر للمشكلة أو اسحب الملفات هنا (مطلوب)</p>
+                <input type="file" id="issueImage" accept="image/*" class="file-input-hidden" multiple required>
+                <div id="multiImagePreviewGrid" class="multi-image-preview-grid hidden"></div>
+              </div>
+            </div>
+
+            <!-- Form Submit Button -->
+            <button type="submit" id="submitBtn" class="hud-btn-primary full-width" style="padding: 14px 24px; font-size:1.05rem; margin-top:10px;">
+              <i class="fa-solid fa-paper-plane"></i>
+              <span data-i18n="btn_submit_request">إرسال طلب الصيانة الآن</span>
+            </button>
+          </form>
+        </div>
+
+      </section>
+
+      <!-- ===================================================================
+           SECTION 2: TRACK ORDER & QUERY FIRESTORE
+           =================================================================== -->
+      <section id="track-order-section" class="tab-content">
+        <div class="hud-card">
+          <div class="hud-card-header">
+            <h2 class="hud-card-title">
+              <i class="fa-solid fa-magnifying-glass-location"></i>
+              <span data-i18n="track_heading">الاستعلام عن حالة طلب صيانة</span>
+            </h2>
+          </div>
+
+          <div class="search-box-group">
+            <input type="text" id="trackInput" placeholder="أدخل رقم التتبع (مثال: GM-2026-89412)" class="hud-input">
+            <button id="trackSearchBtn" class="hud-btn-primary">
+              <i class="fa-solid fa-search"></i>
+              <span data-i18n="btn_search">بحث عن الطلب</span>
+            </button>
+          </div>
+
+          <div id="trackResultContainer" class="hidden"></div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           SECTION 3: RECOVER TRACKING NUMBER
+           =================================================================== -->
+      <section id="recover-tracking-section" class="tab-content">
+        <div class="hud-card">
+          <div class="hud-card-header">
+            <h2 class="hud-card-title">
+              <i class="fa-solid fa-key"></i>
+              <span data-i18n="recover_heading">استعادة رقم التتبع المفقود</span>
+            </h2>
+          </div>
+
+          <p style="color:var(--text-muted); margin-bottom:16px;" data-i18n="recover_sub">
+            أدخل رقم الجوال المسجل في العقد لعرض كافة أرقام التتبع الخاصة بك
+          </p>
+
+          <div class="search-box-group">
+            <input type="tel" id="recoverPhoneInput" placeholder="أدخل رقم الجوال المسجل" class="hud-input">
+            <button id="recoverSearchBtn" class="hud-btn-primary">
+              <i class="fa-solid fa-paper-plane"></i>
+              <span data-i18n="btn_recover">استرجاع الطلبات</span>
+            </button>
+          </div>
+
+          <div id="recoverResultContainer" class="hidden"></div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           SECTION 5: ABOUT GULFMAKERS COMPANY
+           =================================================================== -->
+      <section id="about-section" class="tab-content">
+        <div class="hud-card" style="position:relative; overflow:hidden;">
+          <div class="hud-card-header">
+            <h2 class="hud-card-title">
+              <i class="fa-solid fa-building-user"></i>
+              <span data-i18n="about_heading">عن شركة صناع الخليج (Gulfmakers)</span>
+            </h2>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:24px;">
+            <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+              <img src="logo.png" alt="Gulfmakers Logo" style="height:75px; object-fit:contain; filter:drop-shadow(0 4px 12px rgba(0,0,0,0.15));">
+              <div>
+                <h3 style="color:var(--brand-orange); font-size:1.25rem; font-weight:700;" data-i18n="about_sub">الريادة في التصنيع الهندسي والخدمات الفنية واللوجستية</h3>
+                <p style="color:var(--text-regular); margin-top:6px; font-size:0.95rem; max-width:850px; line-height:1.7;" data-i18n="about_desc">
+                  شركة صناع الخليج هي إحدى الشركات الرائدة المتميزة في تقديم الحلول الهندسية والصناعية وتوفير خدمات الصيانة المتقدمة وفق أعلى معايير الجودة والسلامة عالمياً.
+                </p>
+              </div>
+            </div>
+
+            <div class="ticket-detail-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:20px;">
+              <div class="detail-item" style="padding:16px;">
+                <h4 style="color:var(--brand-orange); margin-bottom:10px; display:flex; align-items:center; gap:8px; font-size:1.05rem;">
+                  <i class="fa-solid fa-bullseye"></i> <span data-i18n="about_mission_title">رؤيتنا ورسالتنا</span>
+                </h4>
+                <p style="color:var(--text-muted); font-size:0.92rem; line-height:1.6;" data-i18n="about_mission_desc">
+                  تسخير أحدث التقنيات الرقمية والخبرات الفنية المتخصصة لضمان سرعة الاستجابة لطلبات الصيانة وإنجاز الأعمال بأعلى كفاءة خلال المدة المحددة.
+                </p>
+              </div>
+
+              <div class="detail-item" style="padding:16px;">
+                <h4 style="color:var(--brand-orange); margin-bottom:10px; display:flex; align-items:center; gap:8px; font-size:1.05rem;">
+                  <i class="fa-solid fa-headset"></i> <span data-i18n="about_contact_title">التواصل والدعم الفني</span>
+                </h4>
+                <div style="display:flex; flex-direction:column; gap:8px; color:var(--text-regular); font-size:0.92rem;">
+                  <div><i class="fa-solid fa-phone" style="color:var(--brand-orange); margin-inline-end:6px;"></i> <span data-i18n="contact_phone">الرقم الموحد: 920000000</span></div>
+                  <div><i class="fa-solid fa-envelope" style="color:var(--brand-orange); margin-inline-end:6px;"></i> <span data-i18n="contact_email">البريد الإلكتروني: support@gulfmakers.com</span></div>
+                  <div><i class="fa-solid fa-location-dot" style="color:var(--brand-orange); margin-inline-end:6px;"></i> <span data-i18n="contact_address">المقر الرئيسي: المملكة العربية السعودية</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           SECTION 4: SECURE ADMIN DASHBOARD & AUTH
+           =================================================================== -->
+      <section id="admin-section" class="tab-content">
+        
+        <!-- Admin Auth Login Card -->
+        <div id="adminLoginForm" class="hud-card" style="max-width: 460px; margin: 30px auto;">
+          <div class="hud-card-header text-center" style="justify-content: center;">
+            <h2 class="hud-card-title">
+              <i class="fa-solid fa-shield-halved"></i>
+              <span data-i18n="admin_login_title">تسجيل دخول المسؤولين</span>
+            </h2>
+          </div>
+
+          <form id="adminAuthForm">
+            <div class="form-group">
+              <label for="adminEmail">
+                <i class="fa-solid fa-envelope"></i>
+                <span data-i18n="label_email">البريد الإلكتروني</span>
+              </label>
+              <input type="email" id="adminEmail" required class="hud-input" value="admin@gulfmakers.com">
+            </div>
+
+            <div class="form-group">
+              <label for="adminPassword">
+                <i class="fa-solid fa-lock"></i>
+                <span data-i18n="label_password">كلمة المرور</span>
+              </label>
+              <input type="password" id="adminPassword" required class="hud-input" value="admin123">
+            </div>
+
+            <button type="submit" id="adminLoginBtn" class="hud-btn-primary full-width" style="padding: 12px;">
+              <i class="fa-solid fa-right-to-bracket"></i>
+              <span data-i18n="btn_login">تسجيل الدخول</span>
+            </button>
+
+            <button type="button" id="quickAdminLoginBtn" class="hud-btn-outline full-width" style="margin-top:10px; border-color:var(--brand-orange); color:var(--brand-orange);">
+              <i class="fa-solid fa-bolt"></i>
+              <span data-i18n="btn_quick_demo">دخول تجريبي سريع بضغطة زر</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Admin Management Dashboard (Shown on Successful Auth) -->
+        <div id="adminDashboard" class="hidden">
+          
+          <!-- Statistics Cards Grid -->
+          <div class="dashboard-stats-grid">
+            <div class="stat-card total">
+              <span class="stat-num" id="statTotal">0</span>
+              <span class="stat-label" data-i18n="stat_total">إجمالي الطلبات</span>
+            </div>
+            <div class="stat-card review">
+              <span class="stat-num" id="statReview">0</span>
+              <span class="stat-label" data-i18n="stat_review">قيد المراجعة</span>
+            </div>
+            <div class="stat-card progress">
+              <span class="stat-num" id="statProgress">0</span>
+              <span class="stat-label" data-i18n="stat_progress">جاري التنفيذ</span>
+            </div>
+            <div class="stat-card resolved">
+              <span class="stat-num" id="statResolved">0</span>
+              <span class="stat-label" data-i18n="stat_resolved">تم الحل والتسليم</span>
+            </div>
+            <div class="stat-card rejected">
+              <span class="stat-num" id="statRejected">0</span>
+              <span class="stat-label" data-i18n="stat_rejected">مرفوضة / ملغاة</span>
+            </div>
+          </div>
+
+          <!-- Main Ticket Management Table & Toolbar -->
+          <div class="hud-card">
+            <div class="table-toolbar" style="flex-wrap:wrap; gap:16px;">
+              <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button type="button" id="viewActiveTabBtn" class="hud-btn-primary" style="padding:8px 16px; font-size:0.88rem;">
+                  <i class="fa-solid fa-list-check"></i>
+                  <span>الطلبات الجارية (النشطة)</span>
+                </button>
+                <button type="button" id="viewArchiveTabBtn" class="hud-btn-outline" style="padding:8px 16px; font-size:0.88rem;">
+                  <i class="fa-solid fa-box-archive"></i>
+                  <span>أرشيف الطلبات المنتهية (المغلقة)</span>
+                </button>
+              </div>
+
+              <div class="search-filter-controls">
+                <input type="text" id="adminSearchInput" class="hud-input" placeholder="بحث برقم التتبع، رقم فسح، أو الجوال..." style="max-width: 260px;">
+                <select id="adminStatusFilter" class="hud-input" style="max-width: 160px;">
+                  <option value="ALL" data-i18n="filter_all">جميع الحالات</option>
+                  <option value="Under Review" data-i18n="status_review">قيد المراجعة</option>
+                  <option value="In Progress" data-i18n="status_progress">جاري العمل</option>
+                  <option value="Resolved" data-i18n="status_resolved">تم الحل</option>
+                  <option value="Rejected" data-i18n="status_rejected">مرفوض</option>
+                </select>
+              </div>
+
+              <button id="adminLogoutBtn" class="hud-btn-outline">
+                <i class="fa-solid fa-power-off"></i>
+                <span data-i18n="btn_logout">تسجيل الخروج</span>
+              </button>
+            </div>
+
+            <!-- Responsive HUD Data Table -->
+            <div class="table-responsive">
+              <table class="hud-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="th_tracking_no">رقم التتبع</th>
+                    <th data-i18n="th_fasah_no">رقم فسح</th>
+                    <th data-i18n="th_phone">جوال العقد</th>
+                    <th data-i18n="th_date">تاريخ تقديم الطلب</th>
+                    <th data-i18n="th_status">الحالة الحالية</th>
+                    <th data-i18n="th_actions">الإجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="adminTicketTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ===================================================================
+       MODAL 1: SUCCESSFUL TICKET CREATION & TRACKING CODE DISPLAY
+       =================================================================== -->
+  <div id="successModal" class="hud-modal-overlay">
+    <div class="hud-modal">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fa-solid fa-circle-check" style="color:var(--status-resolved-text);"></i>
+          <span data-i18n="modal_success_title">تم إرسال طلب الصيانة بنجاح</span>
+        </h3>
+        <button class="modal-close-btn" onclick="closeModal('successModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body tracking-success-box">
+        <i class="fa-solid fa-circle-check success-icon"></i>
+        <p data-i18n="modal_success_msg" style="color:var(--text-muted); font-size:0.95rem;">
+          تم تسجيل طلبك في نظام صناع الخليج. يرجى الاحتفاظ برقم التتبع التالي لمتابعة حالة الطلب:
+        </p>
+        
+        <div class="tracking-code-display">
+          <span id="generatedTrackingCode">GM-2026-XXXXX</span>
+          <button class="copy-code-btn" onclick="copyToClipboard('generatedTrackingCode')" title="Copy">
+            <i class="fa-solid fa-copy"></i>
+            <span data-i18n="btn_copy_code">نسخ الرقم</span>
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="hud-btn-primary" onclick="closeModal('successModal')">
+          <span data-i18n="btn_close">إغلاق</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       MODAL 2: ADMIN EDIT TICKET STATUS & TECHNICIAN NOTES
+       =================================================================== -->
+  <div id="editStatusModal" class="hud-modal-overlay">
+    <div class="hud-modal">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fa-solid fa-pen-to-square" style="color:var(--brand-orange);"></i>
+          <span data-i18n="modal_edit_title">تحديث حالة الطلب والتعليقات الفنية</span>
+        </h3>
+        <button class="modal-close-btn" onclick="closeModal('editStatusModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom:16px;">
+          <span class="detail-label">رقم التتبع:</span>
+          <strong id="editModalTicketId" class="ticket-number-badge">GM-2026-XXXXX</strong>
+        </div>
+
+        <div class="form-group">
+          <label for="editTicketStatusSelect"><span data-i18n="th_status">الحالة الجديدة</span></label>
+          <select id="editTicketStatusSelect" class="hud-input">
+            <option value="Under Review" data-i18n="status_review">قيد المراجعة</option>
+            <option value="In Progress" data-i18n="status_progress">جاري العمل</option>
+            <option value="Resolved" data-i18n="status_resolved">تم الحل</option>
+            <option value="Rejected" data-i18n="status_rejected">مرفوض</option>
+          </select>
+        </div>
+
+        <!-- Dynamic Rejection Reason Box (Shown when status == 'Rejected') -->
+        <div id="rejectionReasonBox" class="form-group hidden" style="background:rgba(239, 68, 68, 0.08); padding:16px; border-radius:var(--radius-md); border:1px solid rgba(239, 68, 68, 0.3); margin-bottom:16px;">
+          <label for="editRejectionReasonInput" style="color:#EF4444; font-weight:bold;">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span data-i18n="label_rejection_reason">سبب الرفض الإلزامي (سيتم إرساله للعميل عبر الإيميل)</span>
+            <span style="color:#EF4444;">*</span>
+          </label>
+          <textarea id="editRejectionReasonInput" rows="3" class="hud-input" placeholder="اكتب سبب رفض طلب الصيانة بدقة ليتم توثيقه وإرساله للعميل عبر البريد الإلكتروني..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="editTechNotesInput"><span data-i18n="label_tech_notes">ملاحظات الفني / الإدارة للعميل</span></label>
+          <textarea id="editTechNotesInput" rows="3" class="hud-input" placeholder="اكتب رد الشركة أو تحديث الحالة هنا..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="hud-btn-outline" onclick="closeModal('editStatusModal')">
+          <span data-i18n="btn_close">إلغلاق</span>
+        </button>
+        <button id="saveTicketEditBtn" class="hud-btn-primary">
+          <i class="fa-solid fa-floppy-disk"></i>
+          <span data-i18n="btn_save_changes">حفظ التغييرات وإرسال الإشعار</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       MODAL 3: EMAIL NOTIFICATION DISPATCH PREVIEW
+       =================================================================== -->
+  <div id="emailNotificationModal" class="hud-modal-overlay">
+    <div class="hud-modal" style="max-width: 620px;">
+      <div class="modal-header" style="background:linear-gradient(135deg, var(--brand-orange) 0%, var(--brand-orange-hover) 100%); color:white;">
+        <h3 class="modal-title" style="color:white;">
+          <i class="fa-solid fa-paper-plane"></i>
+          <span>إشعار إرسال بريد إلكتروني للعميل</span>
+        </h3>
+        <button class="modal-close-btn" onclick="closeModal('emailNotificationModal')" style="color:white;"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="padding:24px;">
+        <div class="hud-alert hud-alert-info" style="margin-bottom:16px;">
+          <i class="fa-solid fa-circle-check"></i>
+          <div>
+            <strong>تم إرسال إشعار البريد الإلكتروني للعميل بنجاح!</strong>
+            <p>تم تمكين خدمة البريد وتوجيه الرسالة الرسمية إلى: <strong id="emailTargetAddress" style="color:var(--brand-orange);">client@domain.com</strong></p>
+          </div>
+        </div>
+
+        <div style="background:var(--bg-dark-input); border:1px solid var(--border-hud); border-radius:var(--radius-md); padding:20px; font-size:0.92rem; line-height:1.6;">
+          <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-subtle); padding-bottom:10px; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+            <div><strong>المُرسِل:</strong> Gulfmakers Maintenance System</div>
+            <div><strong>التاريخ:</strong> <span id="emailDispatchDate">2026-08-20</span></div>
+          </div>
+          <div style="margin-bottom:12px; font-weight:bold; color:var(--text-bright);">
+            <span>موضوع الرسالة:</span> <span id="emailSubject">تحديث مهم بشأن طلب الصيانة رقم GM-2026-XXXXX</span>
+          </div>
+          <div id="emailPreviewBody" style="background:var(--bg-dark-card); padding:16px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle); line-height:1.7;"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="hud-btn-primary" onclick="closeModal('emailNotificationModal')">
+          <span data-i18n="btn_close">إغلاق المعاينة</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK v10.12.2 Compat CDN Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <!-- Application Entry Scripts -->
+  <script src="js/i18n.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
