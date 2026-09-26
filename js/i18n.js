@@ -29,13 +29,13 @@ window.GulfmakersI18n = {
       
       // Form Labels & Inputs
       label_fasah: "رقم فسح (رقم فسح أو الجوال مطلوب)",
-      placeholder_fasah: "مثال: FAS-90210",
+      placeholder_fasah: "",
       label_phone: "رقم جوال العقد (رقم فسح أو الجوال مطلوب)",
-      placeholder_phone: "مثال: 0501234567",
+      placeholder_phone: "",
       label_customer_email: "البريد الإلكتروني للعميل (إلزامي ومطلوب للإشعارات)",
       label_rejection_reason: "سبب الرفض الإلزامي (سيتم إرساله للعميل عبر الإيميل)",
       label_description: "وصف تفصيلي للمشكلة (مطلوب)",
-      placeholder_description: "يرجى وصف المشكلة والمكان بدقة متناهية...",
+      placeholder_description: "",
       label_image: "مرفق صور المشكلة (إلزامي - يمكن اختيار أكثر من صورة)",
       dropzone_text: "انقر لاختيار صورة أو أكثر للمشكلة أو اسحب الملفات هنا (مطلوب)",
       btn_submit_request: "إرسال طلب الصيانة الآن",
@@ -134,13 +134,13 @@ window.GulfmakersI18n = {
       
       // Form Labels & Inputs
       label_fasah: "Fasah Number (Fasah or Phone Required)",
-      placeholder_fasah: "Example: FAS-90210",
+      placeholder_fasah: "",
       label_phone: "Contract Phone (Fasah or Phone Required)",
-      placeholder_phone: "Example: 0501234567",
+      placeholder_phone: "",
       label_customer_email: "Customer Email Address (For Rejection & Updates)",
       label_rejection_reason: "Mandatory Rejection Reason (Sent to Customer Email)",
       label_description: "Detailed Issue Description (Required)",
-      placeholder_description: "Please explain the problem and location thoroughly...",
+      placeholder_description: "",
       label_image: "Attach Issue Photos (Mandatory - Multiple Allowed)",
       dropzone_text: "Click to select multiple photos or drag & drop files here (Required)",
       btn_submit_request: "Submit Maintenance Request",
