@@ -75,7 +75,7 @@ window.GulfmakersI18n = {
       
       // Admin Dashboard & Auth
       admin_login_title: "تسجيل دخول المسؤولين",
-      label_email: "البريد الإلكتروني",
+      label_email: "اسم المستخدم / البريد الإلكتروني",
       label_password: "كلمة المرور",
       btn_login: "تسجيل الدخول",
       btn_quick_demo: "دخول تجريبي سريع بضغطة زر",
@@ -180,7 +180,7 @@ window.GulfmakersI18n = {
       
       // Admin Dashboard & Auth
       admin_login_title: "Administrator Authentication",
-      label_email: "Email Address",
+      label_email: "Username / Email",
       label_password: "Password",
       btn_login: "Sign In",
       btn_quick_demo: "1-Click Quick Demo Login",

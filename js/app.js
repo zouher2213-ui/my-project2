@@ -548,7 +548,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const adminAuthForm = document.getElementById('adminAuthForm');
   const loginBtn = document.getElementById('adminLoginBtn');
-  const quickDemoBtn = document.getElementById('quickAdminLoginBtn');
   const logoutBtn = document.getElementById('adminLogoutBtn');
   const searchInput = document.getElementById('adminSearchInput');
   const filterSelect = document.getElementById('adminStatusFilter');
@@ -619,14 +618,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (adminAuthForm) {
     adminAuthForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      performLogin();
-    });
-  }
-
-  if (quickDemoBtn) {
-    quickDemoBtn.addEventListener('click', () => {
-      document.getElementById('adminEmail').value = 'admin@gulfmakers.com';
-      document.getElementById('adminPassword').value = 'admin123';
       performLogin();
     });
   }

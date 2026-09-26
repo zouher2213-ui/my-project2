@@ -308,13 +308,20 @@ window.GulfmakersDB = (function () {
       return { success: false };
     },
 
-    loginAdmin: async function (email, password) {
-      if (email.toLowerCase() === 'admin@gulfmakers.com' && password === 'admin123') {
-        const mockUser = { email: 'admin@gulfmakers.com', uid: 'admin-local-uid' };
+    loginAdmin: async function (emailOrUser, password) {
+      const normalizedInput = (emailOrUser || '').trim().toLowerCase();
+      if ((normalizedInput === 'admin' || normalizedInput === 'admin@gulfmakers.com') && password === '1122334455GG') {
+        const mockUser = {
+          username: 'admin',
+          email: 'admin@gulfmakers.com',
+          role: 'superadmin',
+          permissions: ['ALL_PERMISSIONS', 'MANAGE_TICKETS', 'DELETE_TICKETS', 'UPDATE_STATUS', 'MANAGE_SETTINGS'],
+          uid: 'super-admin-uid-full-access'
+        };
         localStorage.setItem('gulfmakers_admin_session', JSON.stringify(mockUser));
         return { success: true, user: mockUser };
       } else {
-        return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
+        return { success: false, error: 'اسم المستخدم/البريد الإلكتروني أو كلمة المرور غير صحيحة' };
       }
     },
 
