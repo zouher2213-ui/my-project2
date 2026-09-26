@@ -310,7 +310,12 @@ window.GulfmakersDB = (function () {
 
     loginAdmin: async function (emailOrUser, password) {
       const normalizedInput = (emailOrUser || '').trim().toLowerCase();
-      if ((normalizedInput === 'admin' || normalizedInput === 'admin@gulfmakers.com') && password === '1122334455GG') {
+      const normalizedPass = (password || '').trim();
+
+      const isUserMatch = (normalizedInput === 'admin' || normalizedInput === 'admin@gulfmakers.com');
+      const isPassMatch = (normalizedPass === '1234554321');
+
+      if (isUserMatch && isPassMatch) {
         const mockUser = {
           username: 'admin',
           email: 'admin@gulfmakers.com',
