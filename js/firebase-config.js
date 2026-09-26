@@ -200,6 +200,7 @@ window.GulfmakersDB = (function () {
     },
 
     getTicketByTrackingNumber: async function (trackingNumber) {
+      if (!trackingNumber) return null;
       const cleanId = trackingNumber.trim().toUpperCase();
 
       if (isFirebaseLive && dbFirestore) {
@@ -207,6 +208,10 @@ window.GulfmakersDB = (function () {
           const doc = await dbFirestore.collection('tickets').doc(cleanId).get();
           if (doc.exists) {
             return doc.data();
+          }
+          const snap = await dbFirestore.collection('tickets').where('id', '==', cleanId).limit(1).get();
+          if (!snap.empty) {
+            return snap.docs[0].data();
           }
         } catch (err) {
           console.error("Firestore read ticket error:", err);

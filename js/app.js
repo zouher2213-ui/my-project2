@@ -201,6 +201,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      // RULE 1.5: Phone number must be EXACTLY 10 digits if provided
+      if (contractPhone && contractPhone.length !== 10) {
+        showToast(
+          i18n.getLanguage() === 'ar' 
+            ? 'رقم جوال العقد يجب أن يتكون من 10 أرقام فقط (مثال: 0501234567)' 
+            : 'Contract phone number must be exactly 10 digits (e.g. 0501234567)', 
+          'error'
+        );
+        return;
+      }
+
       // RULE 2: Customer Email Address is MANDATORY
       if (!customerEmail || !customerEmail.includes('@')) {
         showToast(
@@ -457,11 +468,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         ${allImages.length > 0 ? `
           <div class="form-group" style="margin-top:16px;">
-            <label><i class="fa-solid fa-images"></i> ${dict.label_image} (${toEnglishDigits(allImages.length)})</label>
+            <label><i class="fa-solid fa-images"></i> ${dict.label_image} (${toEnglishDigits(allImages.length)}) - <span style="font-size:0.85rem; color:var(--brand-orange); cursor:pointer;" onclick="openTicketImagesModal('${ticket.id}')">انقر لمعاينة وتكبير الصور</span></label>
             <div class="multi-image-preview-grid">
               ${allImages.map((img, i) => `
-                <div class="multi-image-card">
-                  <img src="${img}" alt="Issue Photo ${toEnglishDigits(i + 1)}" onclick="window.open('${img}')">
+                <div class="multi-image-card" onclick="openImageZoomModal('${img}', ${JSON.stringify(allImages).replace(/"/g, '&quot;')}, 'معاينة صورة المشكلة')">
+                  <img src="${img}" alt="Issue Photo ${toEnglishDigits(i + 1)}">
                 </div>
               `).join('')}
             </div>
@@ -814,6 +825,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     tbody.innerHTML = filtered.map(t => {
+      window.cachedTicketsMap = window.cachedTicketsMap || {};
+      window.cachedTicketsMap[t.id] = t;
       const formattedDate = toEnglishDigits(new Date(t.createdAt).toLocaleDateString('en-GB', {
         month: '2-digit', day: '2-digit', year: 'numeric'
       }));
@@ -830,7 +843,10 @@ document.addEventListener('DOMContentLoaded', () => {
             </span>
           </td>
           <td>
-            <div class="action-btn-group" style="display:flex; gap:6px;">
+            <div class="action-btn-group" style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button class="hud-btn-outline" style="padding:4px 8px; font-size:0.8rem; border-color:#06B6D4; color:#06B6D4;" onclick="openTicketImagesModal('${t.id}')" title="عرض وتكبير الصور المرفقة">
+                <i class="fa-solid fa-image"></i> الصور (${(t.imageUrls || (t.imageUrl ? [t.imageUrl] : [])).length})
+              </button>
               <button class="hud-btn-accent" style="padding:4px 10px; font-size:0.8rem;" onclick="openEditTicketModal('${t.id}')">
                 <i class="fa-solid fa-pen-to-square"></i> ${dict.btn_edit_status}
               </button>
@@ -929,6 +945,114 @@ window.copyToClipboard = function(elementId) {
     showToast(isAr ? 'تم نسخ الرقم بنجاح' : 'Code copied to clipboard!', 'success');
   });
 };
+
+// Global Image Zoom & Lightbox Engine
+let currentZoomLevel = 1;
+let currentRotationAngle = 0;
+
+window.openImageZoomModal = function(imgSrc, allImages = [], customTitle = '') {
+  currentZoomLevel = 1;
+  currentRotationAngle = 0;
+
+  const modal = document.getElementById('imageZoomModal');
+  const imgTarget = document.getElementById('zoomTargetImage');
+  const downloadLink = document.getElementById('downloadZoomImageBtn');
+  const galleryContainer = document.getElementById('imageGalleryBar');
+  const titleHeading = document.getElementById('imageModalTitle');
+
+  if (titleHeading && customTitle) titleHeading.textContent = customTitle;
+  if (imgTarget) imgTarget.src = imgSrc;
+  if (downloadLink) downloadLink.href = imgSrc;
+  applyImageTransforms();
+
+  if (galleryContainer) {
+    if (allImages && allImages.length > 1) {
+      galleryContainer.classList.remove('hidden');
+      galleryContainer.innerHTML = allImages.map((src, i) => `
+        <div class="multi-image-card ${src === imgSrc ? 'active-thumb' : ''}" style="height:55px; width:55px; cursor:pointer;" onclick="switchZoomImage('${src}')">
+          <img src="${src}" alt="Thumb ${i + 1}" style="width:100%; height:100%; object-fit:cover;">
+        </div>
+      `).join('');
+    } else {
+      galleryContainer.classList.add('hidden');
+    }
+  }
+
+  if (modal) modal.classList.add('active');
+};
+
+window.switchZoomImage = function(imgSrc) {
+  currentZoomLevel = 1;
+  currentRotationAngle = 0;
+  const imgTarget = document.getElementById('zoomTargetImage');
+  const downloadLink = document.getElementById('downloadZoomImageBtn');
+  if (imgTarget) imgTarget.src = imgSrc;
+  if (downloadLink) downloadLink.href = imgSrc;
+  applyImageTransforms();
+};
+
+window.zoomImage = function(step) {
+  currentZoomLevel = Math.min(Math.max(0.5, currentZoomLevel + step), 4);
+  applyImageTransforms();
+};
+
+window.rotateImage = function(angle) {
+  currentRotationAngle = (currentRotationAngle + angle) % 360;
+  applyImageTransforms();
+};
+
+window.resetImageTransform = function() {
+  currentZoomLevel = 1;
+  currentRotationAngle = 0;
+  applyImageTransforms();
+};
+
+function applyImageTransforms() {
+  const imgTarget = document.getElementById('zoomTargetImage');
+  const indicator = document.getElementById('zoomLevelIndicator');
+  if (imgTarget) {
+    imgTarget.style.transform = `scale(${currentZoomLevel}) rotate(${currentRotationAngle}deg)`;
+  }
+  if (indicator) {
+    indicator.textContent = `التكبير: ${Math.round(currentZoomLevel * 100)}%`;
+  }
+}
+
+window.cachedTicketsMap = window.cachedTicketsMap || {};
+
+window.openTicketImagesModal = async function(trackingId) {
+  let ticket = window.cachedTicketsMap[trackingId];
+  if (!ticket) {
+    ticket = await db.getTicketByTrackingNumber(trackingId);
+  }
+  if (!ticket) {
+    const isAr = i18n.getLanguage() === 'ar';
+    showToast(isAr ? 'عذراً، تعذر العثور على تفاصيل هذا الطلب' : 'Could not find ticket details', 'error');
+    return;
+  }
+  const images = ticket.imageUrls || (ticket.imageUrl ? [ticket.imageUrl] : []);
+  if (!images || images.length === 0) {
+    const isAr = i18n.getLanguage() === 'ar';
+    showToast(isAr ? 'لا توجد صور مرفقة لهذا الطلب' : 'No images attached to this ticket', 'info');
+    return;
+  }
+  window.openImageZoomModal(images[0], images, `معاينة وتكبير صور طلب الصيانة (${toEnglishDigits(ticket.id)})`);
+};
+
+// Automatic Phone Input Masking (Strict 10 Digits Max)
+document.addEventListener('DOMContentLoaded', () => {
+  ['contractPhone', 'recoverPhoneInput'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', (e) => {
+        let val = toEnglishDigits(e.target.value);
+        val = val.replace(/\D/g, ''); // strip non-digits
+        if (val.length > 10) val = val.slice(0, 10);
+        e.target.value = val;
+      });
+    }
+  });
+});
 
 function showToast(message, type = 'info') {
   let container = document.querySelector('.hud-toast-container');
