@@ -28,9 +28,9 @@ window.GulfmakersI18n = {
       warning_body: "في حال عدم إدخال رقم فسح أو رقم التواصل المدون في العقد بشكل صحيح، سيتم تجاهل ورفض طلب الصيانة.",
       
       // Form Labels & Inputs
-      label_fasah: "رقم فسح (رقم فسح أو الجوال مطلوب)",
+      label_fasah: "رقم الفسح",
       placeholder_fasah: "",
-      label_phone: "رقم جوال العقد (رقم فسح أو الجوال مطلوب)",
+      label_phone: "رقم الجوال (رقم الجوال المدرج في عقد الشراء)",
       placeholder_phone: "",
       label_customer_email: "البريد الإلكتروني للعميل (إلزامي ومطلوب للإشعارات)",
       label_rejection_reason: "سبب الرفض الإلزامي (سيتم إرساله للعميل عبر الإيميل)",
@@ -133,9 +133,9 @@ window.GulfmakersI18n = {
       warning_body: "If neither the Fasah number nor the contract phone number is entered correctly, the maintenance request will be rejected.",
       
       // Form Labels & Inputs
-      label_fasah: "Fasah Number (Fasah or Phone Required)",
+      label_fasah: "Fasah Number",
       placeholder_fasah: "",
-      label_phone: "Contract Phone (Fasah or Phone Required)",
+      label_phone: "Phone Number (Phone number specified in purchase contract)",
       placeholder_phone: "",
       label_customer_email: "Customer Email Address (For Rejection & Updates)",
       label_rejection_reason: "Mandatory Rejection Reason (Sent to Customer Email)",
