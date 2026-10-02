@@ -91,12 +91,68 @@ def check_status():
         pass
     return jsonify({'status': 'unknown', 'authorized': False})
 
+def send_single_media(instance_id, token, clean_phone, image_item, caption):
+    """Sends an image (HTTP URL or Base64 Data URL) via Green API sendFileByUrl."""
+    url_file = None
+
+    # Case 1: Public HTTP/HTTPS URL
+    if isinstance(image_item, str) and image_item.startswith('http'):
+        url_file = image_item
+
+    # Case 2: Base64 Data URL (data:image/...;base64,...)
+    elif isinstance(image_item, str) and 'base64,' in image_item:
+        try:
+            base64_data = image_item.split('base64,')[1]
+            img_bytes = base64.b64decode(base64_data)
+
+            mime_type = "image/jpeg"
+            ext = "jpg"
+            if "data:image/png" in image_item:
+                mime_type = "image/png"
+                ext = "png"
+
+            upload_url = f"https://api.green-api.com/waInstance{instance_id}/uploadFile/{token}"
+            upload_resp = requests.post(
+                upload_url,
+                headers={"Content-Type": mime_type},
+                data=img_bytes,
+                timeout=15
+            )
+            if upload_resp.status_code == 200:
+                url_file = upload_resp.json().get('urlFile')
+            else:
+                print("Green API uploadFile error:", upload_resp.status_code, upload_resp.text)
+        except Exception as e:
+            print("Error uploading base64 image:", e)
+
+    if url_file:
+        send_url = f"https://api.green-api.com/waInstance{instance_id}/sendFileByUrl/{token}"
+        payload = {
+            "chatId": f"{clean_phone}@c.us",
+            "urlFile": url_file,
+            "fileName": f"issue_photo.jpg",
+            "caption": caption
+        }
+        send_resp = requests.post(send_url, json=payload, timeout=15)
+        if send_resp.status_code == 200:
+            return True, send_resp.json()
+        else:
+            print("sendFileByUrl response error:", send_resp.status_code, send_resp.text)
+
+    return False, None
+
 @app.route('/send-whatsapp', methods=['POST'])
 def send_whatsapp():
     data = request.json or {}
     raw_phone = data.get('phone', '') or data.get('to', '')
     message = data.get('message', '') or data.get('body', '')
-    image_url = data.get('imageUrl', '') or data.get('mediaUrl', '')
+    
+    # Collect images (array or single string)
+    images_input = data.get('imageUrls', [])
+    if not images_input and data.get('imageUrl'):
+        images_input = [data.get('imageUrl')]
+    elif isinstance(images_input, str):
+        images_input = [images_input]
 
     cfg = load_config()
     instance_id = (data.get('instanceId') or cfg.get('instanceId', '')).strip()
@@ -112,20 +168,21 @@ def send_whatsapp():
         return jsonify({'success': False, 'error': 'لم يتم تحديد Instance ID و Token الخاص بـ Green-API'}), 400
 
     try:
-        # 1. Try sending media photo first if image_url is a valid HTTP URL
-        if image_url and str(image_url).startswith('http'):
-            url_media = f"https://api.green-api.com/waInstance{instance_id}/sendFileByUrl/{token}"
-            payload_media = {
-                "chatId": f"{clean_phone}@c.us",
-                "urlFile": image_url,
-                "fileName": "issue_photo.jpg",
-                "caption": message
-            }
-            resp_media = requests.post(url_media, json=payload_media, timeout=12)
-            if resp_media.status_code == 200:
-                return jsonify({'success': True, 'data': resp_media.json(), 'mediaSent': True})
+        media_sent_count = 0
 
-        # 2. Fallback to text message
+        # Try sending images attached to ticket
+        if images_input and len(images_input) > 0:
+            for idx, img_item in enumerate(images_input):
+                caption_text = message if idx == 0 else f"صورة مرفقة رقم ({idx + 1})"
+                success, res_info = send_single_media(instance_id, token, clean_phone, img_item, caption_text)
+                if success:
+                    media_sent_count += 1
+
+        # If media was sent successfully, return success!
+        if media_sent_count > 0:
+            return jsonify({'success': True, 'mediaSent': True, 'count': media_sent_count})
+
+        # If no media sent, send text message via sendMessage
         url_msg = f"https://api.green-api.com/waInstance{instance_id}/sendMessage/{token}"
         payload_msg = {
             "chatId": f"{clean_phone}@c.us",

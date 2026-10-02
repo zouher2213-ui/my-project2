@@ -1293,7 +1293,8 @@ document.addEventListener('DOMContentLoaded', () => {
             token: tokVal,
             phone: cleanPhone,
             message: messageText,
-            imageUrl: primaryImageUrl
+            imageUrl: primaryImageUrl,
+            imageUrls: ticketImages
           })
         });
 
