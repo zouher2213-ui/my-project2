@@ -1128,6 +1128,94 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Save Custom Technician Button Listener
+  const saveCustomTechBtn = document.getElementById('saveCustomTechBtn');
+  if (saveCustomTechBtn) {
+    saveCustomTechBtn.addEventListener('click', () => {
+      const nameVal = customName ? customName.value.trim() : '';
+      const phoneVal = customPhone ? customPhone.value.trim() : '';
+
+      const isAr = window.GulfmakersI18n.getLanguage() === 'ar';
+      if (!nameVal || !phoneVal) {
+        showToast(isAr ? 'يرجى إدخال اسم الفني ورقم الواتساب أولاً' : 'Please enter technician name and phone number', 'error');
+        return;
+      }
+
+      let cleanPhone = toEnglishDigits(phoneVal).replace(/\D/g, '');
+      if (cleanPhone.startsWith('05')) {
+        cleanPhone = '966' + cleanPhone.slice(1);
+      } else if (cleanPhone.startsWith('5') && cleanPhone.length === 9) {
+        cleanPhone = '966' + cleanPhone;
+      }
+
+      let currentList = window.getTechniciansList();
+      if (currentList.some(t => t.phone === cleanPhone)) {
+        showToast(isAr ? 'هذا الرقم موجود بالفعل في قائمة الفنيين!' : 'Technician phone already exists in list!', 'info');
+      } else {
+        currentList.push({ name: nameVal, phone: cleanPhone });
+        localStorage.setItem('gulfmakers_technicians', JSON.stringify(currentList));
+        showToast(isAr ? `تم إضافة وتوليد الفني "${nameVal}" في القائمة بنجاح!` : `Technician "${nameVal}" added successfully!`, 'success');
+      }
+
+      window.renderTechniciansListOptions();
+      if (techSelect) {
+        techSelect.value = cleanPhone;
+        const deleteBtn = document.getElementById('deleteTechBtn');
+        if (deleteBtn) deleteBtn.style.display = 'inline-flex';
+      }
+      const customContainer = document.getElementById('customTechContainer');
+      if (customContainer) customContainer.classList.add('hidden');
+      window.updateWhatsAppMessagePreview();
+    });
+  }
+
+  // Traditional Direct App Opener Listener
+  const sendWhatsAppAppBtn = document.getElementById('sendWhatsAppAppBtn');
+  if (sendWhatsAppAppBtn) {
+    sendWhatsAppAppBtn.addEventListener('click', () => {
+      if (!currentWhatsAppTicket) return;
+
+      let rawPhone = '';
+      const isCustom = techSelect && techSelect.value === 'custom';
+
+      if (isCustom) {
+        rawPhone = customPhone ? customPhone.value.trim() : '';
+      } else if (techSelect) {
+        rawPhone = techSelect.value;
+      }
+
+      const isAr = window.GulfmakersI18n.getLanguage() === 'ar';
+
+      if (!rawPhone) {
+        showToast(isAr ? 'يرجى اختيار فني أو إدخال رقم الواتساب للفني' : 'Please select or enter technician WhatsApp number', 'error');
+        return;
+      }
+
+      let cleanPhone = toEnglishDigits(rawPhone).replace(/\D/g, '');
+      if (cleanPhone.startsWith('05')) {
+        cleanPhone = '966' + cleanPhone.slice(1);
+      } else if (cleanPhone.startsWith('5') && cleanPhone.length === 9) {
+        cleanPhone = '966' + cleanPhone;
+      }
+
+      const msgPreview = document.getElementById('whatsappMessagePreview');
+      const messageText = msgPreview ? msgPreview.value : '';
+
+      // Direct WhatsApp Desktop Protocol (whatsapp://send?phone=...&text=...)
+      const nativeUrl = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(messageText)}`;
+      const webFallbackUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(messageText)}`;
+
+      // Launch native app protocol, with web fallback window open
+      window.location.href = nativeUrl;
+      setTimeout(() => {
+        window.open(webFallbackUrl, '_blank');
+      }, 500);
+
+      showToast(isAr ? 'تم فتح تطبيق الواتساب المباشر!' : 'Opening WhatsApp Application!', 'success');
+      closeModal('whatsappModal');
+    });
+  }
+
   if (sendWhatsAppBtn) {
     sendWhatsAppBtn.addEventListener('click', async () => {
       if (!currentWhatsAppTicket) return;
@@ -1179,13 +1267,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Try Local Python Microservice first (Port 5000)
       let sentSuccess = false;
+      const ticketImages = currentWhatsAppTicket.imageUrls || (currentWhatsAppTicket.imageUrl ? [currentWhatsAppTicket.imageUrl] : []);
+      const primaryImageUrl = ticketImages.length > 0 ? ticketImages[0] : '';
+
       try {
         const resp = await fetch('http://localhost:5000/send-whatsapp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             phone: cleanPhone,
-            message: messageText
+            message: messageText,
+            imageUrl: primaryImageUrl
           })
         });
 
@@ -1193,7 +1285,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const resData = await resp.json();
           if (resData.success) {
             sentSuccess = true;
-            showToast(isAr ? 'تم إرسال الرسالة بنجاح إلى واتساب الفني في الخلفية!' : 'Direct WhatsApp message sent successfully!', 'success');
+            showToast(isAr ? 'تم إرسال الرسالة والصور بنجاح إلى واتساب الفني في الخلفية!' : 'Direct WhatsApp message & photo sent successfully!', 'success');
             closeModal('whatsappModal');
           }
         }
@@ -1538,7 +1630,11 @@ window.updateWhatsAppMessagePreview = function() {
   text += `📝 *وصف المشكلة:* \n${t.issueDescription}\n\n`;
 
   if (images.length > 0) {
-    text += `🖼️ *المرفقات والصور:* يوجد عدد (${toEnglishDigits(images.length)}) صورة مرفقة للمشكلة.\n`;
+    text += `🖼️ *صور ومرفقات المشكلة (عدد ${toEnglishDigits(images.length)}):*\n`;
+    images.forEach((imgUrl, i) => {
+      text += `📷 *رابط الصورة (${toEnglishDigits(i + 1)}):* ${imgUrl}\n`;
+    });
+    text += `\n`;
   }
   text += `----------------------------------\n`;
   text += `مطلوب المعاينة والتواصل والبدء في الصيانة فوراً.`;

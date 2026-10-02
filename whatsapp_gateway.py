@@ -95,6 +95,7 @@ def send_whatsapp():
     data = request.json or {}
     raw_phone = data.get('phone', '') or data.get('to', '')
     message = data.get('message', '') or data.get('body', '')
+    image_url = data.get('imageUrl', '') or data.get('mediaUrl', '')
 
     clean_phone = ''.join(filter(str.isdigit, str(raw_phone)))
     if clean_phone.startswith('05'):
@@ -108,6 +109,20 @@ def send_whatsapp():
 
     if instance_id and token:
         try:
+            # 1. If image URL is provided and is a valid HTTP URL, send media via sendFileByUrl
+            if image_url and str(image_url).startswith('http'):
+                url_media = f"https://api.green-api.com/waInstance{instance_id}/sendFileByUrl/{token}"
+                payload_media = {
+                    "chatId": f"{clean_phone}@c.us",
+                    "urlFile": image_url,
+                    "fileName": "issue_photo.jpg",
+                    "caption": message
+                }
+                resp_media = requests.post(url_media, json=payload_media, timeout=12)
+                if resp_media.status_code == 200:
+                    return jsonify({'success': True, 'data': resp_media.json()})
+
+            # 2. Otherwise send text message
             url = f"https://api.green-api.com/waInstance{instance_id}/sendMessage/{token}"
             payload = {
                 "chatId": f"{clean_phone}@c.us",

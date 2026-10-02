@@ -694,11 +694,10 @@
             <label for="customTechPhone"><span data-i18n="label_custom_tech_phone">رقم الواتساب للفني (مع كود الدولة)</span></label>
             <input type="tel" id="customTechPhone" class="hud-input" placeholder="مثال: 966501234567 أو 0501234567">
           </div>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <input type="checkbox" id="saveCustomTechCheck" checked style="accent-color: #25D366; width: 16px; height: 16px; cursor: pointer;">
-            <label for="saveCustomTechCheck" style="font-size: 0.85rem; color: var(--text-regular); cursor: pointer; margin: 0;" data-i18n="label_save_custom_tech">
-              حفظ هذا الفني في القائمة للاستخدام المستقبلي
-            </label>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button id="saveCustomTechBtn" type="button" class="hud-btn-primary" style="padding: 6px 14px; font-size: 0.82rem; background: #25D366; color: black; border: none; font-weight: bold;">
+              <i class="fa-solid fa-user-plus" style="margin-inline-end: 4px;"></i> إضافة وحفظ الفني الآن في القائمة
+            </button>
           </div>
         </div>
 
@@ -761,14 +760,23 @@
         </div>
 
       </div>
-      <div class="modal-footer" style="justify-content: space-between;">
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
         <button class="hud-btn-outline" onclick="closeModal('whatsappModal')">
           <span data-i18n="btn_close">إغلاق</span>
         </button>
-        <button id="sendWhatsAppBtn" class="hud-btn-primary" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border: none; box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35); font-weight: bold; font-size: 0.95rem; padding: 10px 20px;">
-          <i class="fa-brands fa-whatsapp" style="font-size: 1.15rem;"></i>
-          <span data-i18n="btn_send_whatsapp">إرسال البيانات عبر الواتساب</span>
-        </button>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <!-- Traditional Direct App Opener Button -->
+          <button id="sendWhatsAppAppBtn" type="button" class="hud-btn-outline" style="border-color: #25D366; color: #25D366; font-weight: bold; font-size: 0.88rem; padding: 8px 14px;" title="فتح تطبيق الواتساب مباشرة على جهازك بدلاً من المتصفح">
+            <i class="fa-brands fa-whatsapp" style="font-size: 1.1rem; color: #25D366; margin-inline-end: 4px;"></i>
+            فتح تطبيق الواتساب المباشر
+          </button>
+          
+          <!-- Silent Direct Background API Send Button -->
+          <button id="sendWhatsAppBtn" type="button" class="hud-btn-primary" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border: none; box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35); font-weight: bold; font-size: 0.88rem; padding: 8px 14px;">
+            <i class="fa-solid fa-paper-plane" style="font-size: 0.95rem; margin-inline-end: 4px;"></i>
+            إرسال مباشر بالخلفية (بدون فتح روابط)
+          </button>
+        </div>
       </div>
     </div>
   </div>
