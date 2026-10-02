@@ -511,3 +511,46 @@ window.GulfmakersDB = (function () {
     }
   };
 })();
+
+// 3. Web3Forms Email Dispatcher Engine
+window.WEB3FORMS_DEFAULT_KEY = "651e4eb2-7324-4710-9867-03b8aff05c73";
+
+window.sendWeb3FormsEmail = async function ({ to_email, subject, message, from_name = "شركة صناع الخليج للصيانة", reply_to = "support@gulfmakers.com" }) {
+  const apiKey = localStorage.getItem('web3forms_access_key') || window.WEB3FORMS_DEFAULT_KEY;
+  if (!apiKey) {
+    console.warn("⚠️ Web3Forms Access Key is not configured yet.");
+    return { success: false, error: 'لم يتم إدخال Web3Forms Access Key' };
+  }
+
+  try {
+    const payload = {
+      access_key: apiKey,
+      subject: subject,
+      from_name: from_name,
+      to_email: to_email,
+      replyto: reply_to,
+      message: message
+    };
+
+    const response = await fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      console.log("✉️ [Web3Forms] Email sent successfully!", data);
+      return { success: true, data };
+    } else {
+      console.error("❌ [Web3Forms] Email failed:", data);
+      return { success: false, error: data.message || 'فشل إرسال البريد الإلكتروني' };
+    }
+  } catch (err) {
+    console.error("❌ [Web3Forms] Network/API Error:", err);
+    return { success: false, error: err.message };
+  }
+};

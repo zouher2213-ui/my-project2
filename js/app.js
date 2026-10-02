@@ -675,7 +675,7 @@ document.addEventListener('DOMContentLoaded', () => {
         closeModal('editStatusModal');
         renderAdminDashboard();
 
-        // Trigger Automated Email Dispatching Preview Modal
+        // Trigger Automated Email Dispatching via Web3Forms
         triggerEmailDispatchModal(result.ticket, newStatus, rejectionReason, techNotes);
       } else {
         showToast(i18n.getLanguage() === 'ar' ? 'فشل التحديث' : 'Update failed', 'error');
@@ -683,23 +683,71 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function triggerEmailDispatchModal(ticket, newStatus, rejectionReason, techNotes) {
+  // Web3Forms Settings Handlers
+  const web3FormsKeyBtn = document.getElementById('web3FormsKeyBtn');
+  const saveWeb3KeyBtn = document.getElementById('saveWeb3KeyBtn');
+  const web3FormsApiKeyInput = document.getElementById('web3FormsApiKeyInput');
+
+  if (web3FormsKeyBtn) {
+    web3FormsKeyBtn.addEventListener('click', () => {
+      if (web3FormsApiKeyInput) {
+        web3FormsApiKeyInput.value = localStorage.getItem('web3forms_access_key') || window.WEB3FORMS_DEFAULT_KEY || '';
+      }
+      const modal = document.getElementById('web3FormsModal');
+      if (modal) modal.classList.add('active');
+    });
+  }
+
+  if (saveWeb3KeyBtn) {
+    saveWeb3KeyBtn.addEventListener('click', () => {
+      const key = web3FormsApiKeyInput ? web3FormsApiKeyInput.value.trim() : '';
+      if (!key) {
+        showToast(i18n.getLanguage() === 'ar' ? 'يرجى إدخال Web3Forms Access Key' : 'Please enter Web3Forms Access Key', 'error');
+        return;
+      }
+      localStorage.setItem('web3forms_access_key', key);
+      showToast(i18n.getLanguage() === 'ar' ? 'تم حفظ مفتاح Web3Forms بنجاح!' : 'Web3Forms key saved successfully!', 'success');
+      closeModal('web3FormsModal');
+    });
+  }
+
+  async function triggerEmailDispatchModal(ticket, newStatus, rejectionReason, techNotes) {
     const emailModal = document.getElementById('emailNotificationModal');
     const emailTarget = document.getElementById('emailTargetAddress');
     const emailSubject = document.getElementById('emailSubject');
     const emailBody = document.getElementById('emailPreviewBody');
     const emailDate = document.getElementById('emailDispatchDate');
+    const emailAlertBox = document.getElementById('emailStatusAlertBox');
 
-    const targetEmail = ticket.customerEmail || (i18n.getLanguage() === 'ar' ? `العميل (جوال: ${toEnglishDigits(ticket.contractPhone)})` : `Client (${toEnglishDigits(ticket.contractPhone)})`);
-    if (emailTarget) emailTarget.textContent = targetEmail;
+    const targetEmail = ticket.customerEmail || '';
+    if (emailTarget) emailTarget.textContent = targetEmail || (i18n.getLanguage() === 'ar' ? `العميل (جوال: ${toEnglishDigits(ticket.contractPhone)})` : `Client (${toEnglishDigits(ticket.contractPhone)})`);
     if (emailDate) emailDate.textContent = toEnglishDigits(new Date().toLocaleDateString('en-GB'));
 
     const isRejected = newStatus === 'Rejected';
+    const statusMapAr = {
+      'Under Review': 'قيد المراجعة',
+      'In Progress': 'جاري العمل والتنفيذ',
+      'Resolved': 'تم الحل والتسليم بنجاح',
+      'Rejected': 'مرفوض'
+    };
+    const statusNameAr = statusMapAr[newStatus] || newStatus;
+
     const subjectText = isRejected 
       ? `[إشعار رسمي - رفض الطلب] تحديث بشأن طلب الصيانة رقم ${toEnglishDigits(ticket.id)}`
       : `[إشعار رسمي] تحديث حالة طلب الصيانة رقم ${toEnglishDigits(ticket.id)}`;
 
     if (emailSubject) emailSubject.textContent = subjectText;
+
+    let plainMessage = `عزيزي العميل،\n\n`;
+    plainMessage += `نفيدكم علماً بأنه تم إجراء تحديث على طلب الصيانة الخاص بكم رقم ${toEnglishDigits(ticket.id)} (رقم فسح: ${toEnglishDigits(ticket.fasahNumber)}).\n\n`;
+    plainMessage += `الحالة الجديدة للطلب: ${statusNameAr}\n`;
+    if (isRejected && rejectionReason) {
+      plainMessage += `سبب الرفض: ${rejectionReason}\n`;
+    }
+    if (techNotes) {
+      plainMessage += `ملاحظات الفني / الإدارة: ${techNotes}\n`;
+    }
+    plainMessage += `\nشكراً لتواصلكم مع شركة صناع الخليج (Gulfmakers).\nالدعم الفني: support@gulfmakers.com`;
 
     if (emailBody) {
       emailBody.innerHTML = `
@@ -711,7 +759,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <p style="font-size:0.92rem; margin-top:6px;">نفيدكم علماً بأنه تم إجراء تحديث على طلب الصيانة الخاص بكم رقم <strong style="color:var(--brand-orange);">${toEnglishDigits(ticket.id)}</strong> المرفوع برقم فسح (<strong>${toEnglishDigits(ticket.fasahNumber)}</strong>) والجوال (<strong>${toEnglishDigits(ticket.contractPhone)}</strong>).</p>
         
         <div style="margin:16px 0; padding:16px; border-radius:8px; background:${isRejected ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)'}; border:1px solid ${isRejected ? '#EF4444' : '#10B981'};">
-          <strong style="color:${isRejected ? '#EF4444' : '#10B981'}; font-size:1.05rem;">الحالة الحالية: ${newStatus === 'Rejected' ? 'مرفوض' : newStatus}</strong>
+          <strong style="color:${isRejected ? '#EF4444' : '#10B981'}; font-size:1.05rem;">الحالة الحالية: ${statusNameAr}</strong>
           ${isRejected && rejectionReason ? `
             <div style="margin-top:10px; color:var(--text-bright); padding-top:8px; border-top:1px dashed rgba(239,68,68,0.3);">
               <strong style="color:#EF4444;"><i class="fa-solid fa-triangle-exclamation"></i> سبب رفض الطلب:</strong>
@@ -729,7 +777,58 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     }
 
+    if (emailAlertBox) {
+      emailAlertBox.className = 'hud-alert hud-alert-info';
+      emailAlertBox.innerHTML = `
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <div>
+          <strong>جاري إرسال إشعار البريد الإلكتروني للعميل عبر Web3Forms...</strong>
+          <p>البريد المستهدف: <strong>${targetEmail || 'لم يحدد بريد إلكتروني'}</strong></p>
+        </div>
+      `;
+    }
+
     if (emailModal) emailModal.classList.add('active');
+
+    // Perform live Web3Forms Email Sending
+    if (targetEmail && window.sendWeb3FormsEmail) {
+      const emailResult = await window.sendWeb3FormsEmail({
+        to_email: targetEmail,
+        subject: subjectText,
+        message: plainMessage
+      });
+
+      if (emailAlertBox) {
+        if (emailResult.success) {
+          emailAlertBox.className = 'hud-alert hud-alert-success';
+          emailAlertBox.innerHTML = `
+            <i class="fa-solid fa-circle-check" style="color:#10B981;"></i>
+            <div>
+              <strong style="color:#10B981;">تم إرسال البريد الإلكتروني بنجاح عبر Web3Forms!</strong>
+              <p>تم تسليم رسالة تحديث الحالة إلى: <strong style="color:var(--brand-orange);">${targetEmail}</strong></p>
+            </div>
+          `;
+        } else {
+          emailAlertBox.className = 'hud-alert hud-alert-warning';
+          emailAlertBox.innerHTML = `
+            <i class="fa-solid fa-triangle-exclamation" style="color:#F59E0B;"></i>
+            <div>
+              <strong style="color:#F59E0B;">تعذر إرسال البريد الإلكتروني تلقائياً (${emailResult.error})</strong>
+              <p>يرجى التأكد من إدخال Web3Forms Access Key في لوحة التحكم.</p>
+            </div>
+          `;
+        }
+      }
+    } else if (!targetEmail && emailAlertBox) {
+      emailAlertBox.className = 'hud-alert hud-alert-warning';
+      emailAlertBox.innerHTML = `
+        <i class="fa-solid fa-circle-info"></i>
+        <div>
+          <strong>العميل لم يقم بتزويد بريد إلكتروني عند رفع الطلب.</strong>
+          <p>تم تحديث حالة الطلب بنجاح في النظام و Realtime Database.</p>
+        </div>
+      `;
+    }
   }
 
   function showAdminLoginForm() {

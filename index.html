@@ -395,6 +395,11 @@
                 </select>
               </div>
 
+              <button type="button" id="web3FormsKeyBtn" class="hud-btn-outline" style="border-color:var(--brand-orange); color:var(--brand-orange);" title="ضبط مفتاح Web3Forms للإيميل">
+                <i class="fa-solid fa-envelope-circle-check"></i>
+                <span>مفتاح Web3Forms</span>
+              </button>
+
               <button id="adminLogoutBtn" class="hud-btn-outline">
                 <i class="fa-solid fa-power-off"></i>
                 <span data-i18n="btn_logout">تسجيل الخروج</span>
@@ -523,16 +528,16 @@
       <div class="modal-header" style="background:linear-gradient(135deg, var(--brand-orange) 0%, var(--brand-orange-hover) 100%); color:white;">
         <h3 class="modal-title" style="color:white;">
           <i class="fa-solid fa-paper-plane"></i>
-          <span>إشعار إرسال بريد إلكتروني للعميل</span>
+          <span>إشعار إرسال بريد إلكتروني للعميل عبر Web3Forms</span>
         </h3>
         <button class="modal-close-btn" onclick="closeModal('emailNotificationModal')" style="color:white;"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body" style="padding:24px;">
-        <div class="hud-alert hud-alert-info" style="margin-bottom:16px;">
-          <i class="fa-solid fa-circle-check"></i>
+        <div id="emailStatusAlertBox" class="hud-alert hud-alert-info" style="margin-bottom:16px;">
+          <i class="fa-solid fa-spinner fa-spin"></i>
           <div>
-            <strong>تم إرسال إشعار البريد الإلكتروني للعميل بنجاح!</strong>
-            <p>تم تمكين خدمة البريد وتوجيه الرسالة الرسمية إلى: <strong id="emailTargetAddress" style="color:var(--brand-orange);">client@domain.com</strong></p>
+            <strong>جاري معالجة إرسال إشعار البريد الإلكتروني...</strong>
+            <p>تم توجيه الرسالة الرسمية إلى: <strong id="emailTargetAddress" style="color:var(--brand-orange);">client@domain.com</strong></p>
           </div>
         </div>
 
@@ -550,6 +555,37 @@
       <div class="modal-footer">
         <button class="hud-btn-primary" onclick="closeModal('emailNotificationModal')">
           <span data-i18n="btn_close">إغلاق المعاينة</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       MODAL 5: WEB3FORMS SETTINGS MODAL
+       =================================================================== -->
+  <div id="web3FormsModal" class="hud-modal-overlay">
+    <div class="hud-modal" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fa-solid fa-key" style="color:var(--brand-orange);"></i>
+          <span>إعداد خدمة البريد الإلكتروني Web3Forms</span>
+        </h3>
+        <button class="modal-close-btn" onclick="closeModal('web3FormsModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="padding:20px;">
+        <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:16px; line-height:1.6;">
+          قم بإدخال مفتاح الوصول (Access Key) الخاص بك من حساب <strong>Web3Forms</strong> ليتم إرسال إشعارات تغيير الحالة إلى بريد العملاء تلقائياً:
+        </p>
+        <div class="form-group">
+          <label for="web3FormsApiKeyInput"><strong>Web3Forms Access Key:</strong></label>
+          <input type="text" id="web3FormsApiKeyInput" class="hud-input" placeholder="مثال: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="font-family:monospace;">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="hud-btn-outline" onclick="closeModal('web3FormsModal')">إلغاء</button>
+        <button id="saveWeb3KeyBtn" class="hud-btn-primary">
+          <i class="fa-solid fa-floppy-disk"></i>
+          <span>حفظ المفتاح</span>
         </button>
       </div>
     </div>
