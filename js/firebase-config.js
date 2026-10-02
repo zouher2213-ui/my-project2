@@ -1,11 +1,12 @@
 /* ==========================================================================
    GULFMAKERS MAINTENANCE & WAREHOUSE SYSTEM - FIREBASE ENGINE & DB MANAGER
-   Dual-Mode Architecture: Live Cloud Firestore DB + Local Storage Fallback
+   Multi-Mode Architecture: Live Realtime Database + Firestore + Local Storage Fallback
    ========================================================================== */
 
 const firebaseConfig = {
   apiKey: "AIzaSyDNboDxYyeaCKIYj304FuMRZ7_1H9rTjGE",
   authDomain: "my-project2-c1d7b.firebaseapp.com",
+  databaseURL: "https://my-project2-c1d7b-default-rtdb.firebaseio.com",
   projectId: "my-project2-c1d7b",
   storageBucket: "my-project2-c1d7b.firebasestorage.app",
   messagingSenderId: "888669081541",
@@ -14,6 +15,7 @@ const firebaseConfig = {
 };
 
 let isFirebaseLive = false;
+let dbRTDB = null;
 let dbFirestore = null;
 
 try {
@@ -21,9 +23,28 @@ try {
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
-    dbFirestore = firebase.firestore();
-    isFirebaseLive = true;
-    console.log("🔥 [GulfmakersDB] Connected to Firebase Cloud Firestore successfully!");
+
+    // 1. Initialize Realtime Database if SDK is loaded
+    if (typeof firebase.database === 'function') {
+      try {
+        dbRTDB = firebase.database();
+        isFirebaseLive = true;
+        console.log("⚡ [GulfmakersDB] Connected to Firebase Realtime Database successfully!");
+      } catch (rtdbErr) {
+        console.warn("⚠️ [GulfmakersDB] Realtime Database connection attempt:", rtdbErr);
+      }
+    }
+
+    // 2. Initialize Cloud Firestore if SDK is loaded
+    if (typeof firebase.firestore === 'function') {
+      try {
+        dbFirestore = firebase.firestore();
+        isFirebaseLive = true;
+        console.log("🔥 [GulfmakersDB] Connected to Firebase Cloud Firestore successfully!");
+      } catch (fsErr) {
+        console.warn("⚠️ [GulfmakersDB] Firestore connection attempt:", fsErr);
+      }
+    }
   }
 } catch (e) {
   console.warn("⚠️ [GulfmakersDB] Firebase initialization fallback to localStorage:", e);
@@ -64,20 +85,43 @@ function saveLocalTickets(tickets) {
 
 // 1. Warehouse Data Storage Function
 window.saveWarehouseData = async function (formData) {
-  if (isFirebaseLive && dbFirestore) {
-    try {
-      const docRef = await dbFirestore.collection("warehouse_data").add({
-        ...formData,
-        createdAt: new Date().toISOString()
-      });
-      console.log("🔥 [Warehouse] Saved document ID:", docRef.id);
-      return { success: true, id: docRef.id };
-    } catch (err) {
-      console.error("❌ Error saving warehouse data to Firestore:", err);
-      return { success: false, error: err };
+  let saved = false;
+  let saveId = null;
+
+  if (isFirebaseLive) {
+    if (dbRTDB) {
+      try {
+        const newRef = dbRTDB.ref("warehouse_data").push();
+        await newRef.set({
+          ...formData,
+          createdAt: new Date().toISOString()
+        });
+        console.log("⚡ [Warehouse] Saved to Realtime DB with key:", newRef.key);
+        saved = true;
+        saveId = newRef.key;
+      } catch (err) {
+        console.error("❌ Error saving warehouse data to Realtime DB:", err);
+      }
+    }
+    if (dbFirestore) {
+      try {
+        const docRef = await dbFirestore.collection("warehouse_data").add({
+          ...formData,
+          createdAt: new Date().toISOString()
+        });
+        console.log("🔥 [Warehouse] Saved to Firestore ID:", docRef.id);
+        saved = true;
+        if (!saveId) saveId = docRef.id;
+      } catch (err) {
+        console.error("❌ Error saving warehouse data to Firestore:", err);
+      }
     }
   }
-  return { success: false, error: "Firebase not initialized" };
+
+  if (saved) {
+    return { success: true, id: saveId };
+  }
+  return { success: false, error: "Firebase save failed or not initialized" };
 };
 
 // 2. Gulfmakers Maintenance System Database Interface
@@ -87,19 +131,49 @@ window.GulfmakersDB = (function () {
       return isFirebaseLive;
     },
 
+    getEngineType: function () {
+      if (dbRTDB && dbFirestore) return 'Realtime DB + Firestore';
+      if (dbRTDB) return 'Realtime DB';
+      if (dbFirestore) return 'Firestore';
+      return 'LocalStorage';
+    },
+
     subscribeTickets: function (callback) {
-      if (isFirebaseLive && dbFirestore) {
-        try {
-          return dbFirestore.collection('tickets').onSnapshot((snapshot) => {
-            const liveTickets = snapshot.docs.map(doc => doc.data());
-            liveTickets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            console.log("🔥 [Live Refresh] Real-time tickets update received!");
-            if (typeof callback === 'function') callback(liveTickets);
-          }, (err) => {
-            console.error("Firestore live listener error:", err);
-          });
-        } catch (err) {
-          console.error("Failed to subscribe to live tickets:", err);
+      if (isFirebaseLive) {
+        if (dbRTDB) {
+          try {
+            const ticketsRef = dbRTDB.ref('tickets');
+            const listener = ticketsRef.on('value', (snapshot) => {
+              const data = snapshot.val();
+              let liveTickets = [];
+              if (data) {
+                liveTickets = Object.keys(data).map(key => data[key]);
+              }
+              liveTickets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+              console.log("⚡ [Realtime DB Live Refresh] Real-time tickets update received!");
+              if (typeof callback === 'function') callback(liveTickets);
+            }, (err) => {
+              console.error("Realtime DB live listener error:", err);
+            });
+            return () => ticketsRef.off('value', listener);
+          } catch (err) {
+            console.error("Failed to subscribe to Realtime DB tickets:", err);
+          }
+        }
+
+        if (dbFirestore) {
+          try {
+            return dbFirestore.collection('tickets').onSnapshot((snapshot) => {
+              const liveTickets = snapshot.docs.map(doc => doc.data());
+              liveTickets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+              console.log("🔥 [Firestore Live Refresh] Real-time tickets update received!");
+              if (typeof callback === 'function') callback(liveTickets);
+            }, (err) => {
+              console.error("Firestore live listener error:", err);
+            });
+          } catch (err) {
+            console.error("Failed to subscribe to Firestore tickets:", err);
+          }
         }
       }
       return null;
@@ -110,12 +184,29 @@ window.GulfmakersDB = (function () {
       const cleanPhone = contractPhone ? contractPhone.trim() : '';
 
       let tickets = [];
-      if (isFirebaseLive && dbFirestore) {
-        try {
-          const snapshot = await dbFirestore.collection('tickets').get();
-          tickets = snapshot.docs.map(doc => doc.data());
-        } catch (err) {
-          console.error("Firestore read error, using local fallback:", err);
+      if (isFirebaseLive) {
+        if (dbRTDB) {
+          try {
+            const snap = await dbRTDB.ref('tickets').once('value');
+            if (snap.exists()) {
+              const data = snap.val();
+              tickets = Object.keys(data).map(k => data[k]);
+            } else {
+              tickets = getLocalTickets();
+            }
+          } catch (err) {
+            console.error("Realtime DB read error, using local fallback:", err);
+            tickets = getLocalTickets();
+          }
+        } else if (dbFirestore) {
+          try {
+            const snapshot = await dbFirestore.collection('tickets').get();
+            tickets = snapshot.docs.map(doc => doc.data());
+          } catch (err) {
+            console.error("Firestore read error, using local fallback:", err);
+            tickets = getLocalTickets();
+          }
+        } else {
           tickets = getLocalTickets();
         }
       } else {
@@ -183,12 +274,22 @@ window.GulfmakersDB = (function () {
         isActive: true
       };
 
-      if (isFirebaseLive && dbFirestore) {
-        try {
-          await dbFirestore.collection('tickets').doc(trackingNumber).set(newTicket);
-          console.log(`🔥 [Firestore] Ticket ${trackingNumber} created live!`);
-        } catch (err) {
-          console.error("Firestore write failed, saving locally:", err);
+      if (isFirebaseLive) {
+        if (dbRTDB) {
+          try {
+            await dbRTDB.ref('tickets/' + trackingNumber).set(newTicket);
+            console.log(`⚡ [Realtime DB] Ticket ${trackingNumber} created live!`);
+          } catch (err) {
+            console.error("Realtime DB write failed:", err);
+          }
+        }
+        if (dbFirestore) {
+          try {
+            await dbFirestore.collection('tickets').doc(trackingNumber).set(newTicket);
+            console.log(`🔥 [Firestore] Ticket ${trackingNumber} created live!`);
+          } catch (err) {
+            console.error("Firestore write failed:", err);
+          }
         }
       }
 
@@ -203,18 +304,30 @@ window.GulfmakersDB = (function () {
       if (!trackingNumber) return null;
       const cleanId = trackingNumber.trim().toUpperCase();
 
-      if (isFirebaseLive && dbFirestore) {
-        try {
-          const doc = await dbFirestore.collection('tickets').doc(cleanId).get();
-          if (doc.exists) {
-            return doc.data();
+      if (isFirebaseLive) {
+        if (dbRTDB) {
+          try {
+            const snap = await dbRTDB.ref('tickets/' + cleanId).once('value');
+            if (snap.exists()) {
+              return snap.val();
+            }
+          } catch (err) {
+            console.error("Realtime DB read ticket error:", err);
           }
-          const snap = await dbFirestore.collection('tickets').where('id', '==', cleanId).limit(1).get();
-          if (!snap.empty) {
-            return snap.docs[0].data();
+        }
+        if (dbFirestore) {
+          try {
+            const doc = await dbFirestore.collection('tickets').doc(cleanId).get();
+            if (doc.exists) {
+              return doc.data();
+            }
+            const snap = await dbFirestore.collection('tickets').where('id', '==', cleanId).limit(1).get();
+            if (!snap.empty) {
+              return snap.docs[0].data();
+            }
+          } catch (err) {
+            console.error("Firestore read ticket error:", err);
           }
-        } catch (err) {
-          console.error("Firestore read ticket error:", err);
         }
       }
 
@@ -225,16 +338,34 @@ window.GulfmakersDB = (function () {
     getTicketsByPhone: async function (phone) {
       const cleanPhone = phone.trim();
 
-      if (isFirebaseLive && dbFirestore) {
-        try {
-          const snapshot = await dbFirestore.collection('tickets').where('contractPhone', '==', cleanPhone).get();
-          if (!snapshot.empty) {
-            const liveTickets = snapshot.docs.map(doc => doc.data());
-            liveTickets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            return liveTickets;
+      if (isFirebaseLive) {
+        if (dbRTDB) {
+          try {
+            const snap = await dbRTDB.ref('tickets').once('value');
+            if (snap.exists()) {
+              const data = snap.val();
+              const all = Object.keys(data).map(k => data[k]);
+              const userTickets = all.filter(t => t.contractPhone === cleanPhone);
+              if (userTickets.length > 0) {
+                userTickets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                return userTickets;
+              }
+            }
+          } catch (err) {
+            console.error("Realtime DB read phone error:", err);
           }
-        } catch (err) {
-          console.error("Firestore read phone error:", err);
+        }
+        if (dbFirestore) {
+          try {
+            const snapshot = await dbFirestore.collection('tickets').where('contractPhone', '==', cleanPhone).get();
+            if (!snapshot.empty) {
+              const liveTickets = snapshot.docs.map(doc => doc.data());
+              liveTickets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+              return liveTickets;
+            }
+          } catch (err) {
+            console.error("Firestore read phone error:", err);
+          }
         }
       }
 
@@ -243,14 +374,29 @@ window.GulfmakersDB = (function () {
     },
 
     getAllTickets: async function () {
-      if (isFirebaseLive && dbFirestore) {
-        try {
-          const snapshot = await dbFirestore.collection('tickets').get();
-          const liveTickets = snapshot.docs.map(doc => doc.data());
-          liveTickets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-          return liveTickets;
-        } catch (err) {
-          console.error("Firestore read all tickets error:", err);
+      if (isFirebaseLive) {
+        if (dbRTDB) {
+          try {
+            const snap = await dbRTDB.ref('tickets').once('value');
+            if (snap.exists()) {
+              const data = snap.val();
+              const liveTickets = Object.keys(data).map(k => data[k]);
+              liveTickets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+              return liveTickets;
+            }
+          } catch (err) {
+            console.error("Realtime DB read all tickets error:", err);
+          }
+        }
+        if (dbFirestore) {
+          try {
+            const snapshot = await dbFirestore.collection('tickets').get();
+            const liveTickets = snapshot.docs.map(doc => doc.data());
+            liveTickets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            return liveTickets;
+          } catch (err) {
+            console.error("Firestore read all tickets error:", err);
+          }
         }
       }
 
@@ -262,12 +408,22 @@ window.GulfmakersDB = (function () {
     deleteTicket: async function (trackingNumber) {
       const cleanId = trackingNumber.trim().toUpperCase();
 
-      if (isFirebaseLive && dbFirestore) {
-        try {
-          await dbFirestore.collection('tickets').doc(cleanId).delete();
-          console.log(`🔥 [Firestore] Ticket ${cleanId} deleted live!`);
-        } catch (err) {
-          console.error("Firestore delete error:", err);
+      if (isFirebaseLive) {
+        if (dbRTDB) {
+          try {
+            await dbRTDB.ref('tickets/' + cleanId).remove();
+            console.log(`⚡ [Realtime DB] Ticket ${cleanId} deleted live!`);
+          } catch (err) {
+            console.error("Realtime DB delete error:", err);
+          }
+        }
+        if (dbFirestore) {
+          try {
+            await dbFirestore.collection('tickets').doc(cleanId).delete();
+            console.log(`🔥 [Firestore] Ticket ${cleanId} deleted live!`);
+          } catch (err) {
+            console.error("Firestore delete error:", err);
+          }
         }
       }
 
@@ -290,12 +446,22 @@ window.GulfmakersDB = (function () {
         updatedAt: now
       };
 
-      if (isFirebaseLive && dbFirestore) {
-        try {
-          await dbFirestore.collection('tickets').doc(cleanId).update(updatePayload);
-          console.log(`🔥 [Firestore] Ticket ${cleanId} status updated live to ${newStatus}`);
-        } catch (err) {
-          console.error("Firestore update error:", err);
+      if (isFirebaseLive) {
+        if (dbRTDB) {
+          try {
+            await dbRTDB.ref('tickets/' + cleanId).update(updatePayload);
+            console.log(`⚡ [Realtime DB] Ticket ${cleanId} status updated live to ${newStatus}`);
+          } catch (err) {
+            console.error("Realtime DB update error:", err);
+          }
+        }
+        if (dbFirestore) {
+          try {
+            await dbFirestore.collection('tickets').doc(cleanId).update(updatePayload);
+            console.log(`🔥 [Firestore] Ticket ${cleanId} status updated live to ${newStatus}`);
+          } catch (err) {
+            console.error("Firestore update error:", err);
+          }
         }
       }
 
