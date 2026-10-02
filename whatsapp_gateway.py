@@ -40,8 +40,8 @@ def handle_config():
 @app.route('/qr', methods=['GET'])
 def get_qr():
     cfg = load_config()
-    instance_id = cfg.get('instanceId')
-    token = cfg.get('token')
+    instance_id = request.args.get('instanceId') or cfg.get('instanceId')
+    token = request.args.get('token') or cfg.get('token')
 
     if not instance_id or not token:
         qr_img = qrcode.make('https://green-api.com')
@@ -75,8 +75,9 @@ def get_qr():
 @app.route('/status', methods=['GET'])
 def check_status():
     cfg = load_config()
-    instance_id = cfg.get('instanceId')
-    token = cfg.get('token')
+    instance_id = request.args.get('instanceId') or cfg.get('instanceId')
+    token = request.args.get('token') or cfg.get('token')
+
     if not instance_id or not token:
         return jsonify({'status': 'unconfigured', 'authorized': False})
     
@@ -97,46 +98,47 @@ def send_whatsapp():
     message = data.get('message', '') or data.get('body', '')
     image_url = data.get('imageUrl', '') or data.get('mediaUrl', '')
 
+    cfg = load_config()
+    instance_id = (data.get('instanceId') or cfg.get('instanceId', '')).strip()
+    token = (data.get('token') or cfg.get('token', '')).strip()
+
     clean_phone = ''.join(filter(str.isdigit, str(raw_phone)))
     if clean_phone.startswith('05'):
         clean_phone = '966' + clean_phone[1:]
     elif clean_phone.startswith('5') and len(clean_phone) == 9:
         clean_phone = '966' + clean_phone
 
-    cfg = load_config()
-    instance_id = cfg.get('instanceId')
-    token = cfg.get('token')
+    if not instance_id or not token:
+        return jsonify({'success': False, 'error': 'لم يتم تحديد Instance ID و Token الخاص بـ Green-API'}), 400
 
-    if instance_id and token:
-        try:
-            # 1. If image URL is provided and is a valid HTTP URL, send media via sendFileByUrl
-            if image_url and str(image_url).startswith('http'):
-                url_media = f"https://api.green-api.com/waInstance{instance_id}/sendFileByUrl/{token}"
-                payload_media = {
-                    "chatId": f"{clean_phone}@c.us",
-                    "urlFile": image_url,
-                    "fileName": "issue_photo.jpg",
-                    "caption": message
-                }
-                resp_media = requests.post(url_media, json=payload_media, timeout=12)
-                if resp_media.status_code == 200:
-                    return jsonify({'success': True, 'data': resp_media.json()})
-
-            # 2. Otherwise send text message
-            url = f"https://api.green-api.com/waInstance{instance_id}/sendMessage/{token}"
-            payload = {
+    try:
+        # 1. Try sending media photo first if image_url is a valid HTTP URL
+        if image_url and str(image_url).startswith('http'):
+            url_media = f"https://api.green-api.com/waInstance{instance_id}/sendFileByUrl/{token}"
+            payload_media = {
                 "chatId": f"{clean_phone}@c.us",
-                "message": message
+                "urlFile": image_url,
+                "fileName": "issue_photo.jpg",
+                "caption": message
             }
-            resp = requests.post(url, json=payload, timeout=10)
-            if resp.status_code == 200:
-                return jsonify({'success': True, 'data': resp.json()})
-            else:
-                return jsonify({'success': False, 'error': resp.text}), resp.status_code
-        except Exception as e:
-            return jsonify({'success': False, 'error': str(e)}), 500
+            resp_media = requests.post(url_media, json=payload_media, timeout=12)
+            if resp_media.status_code == 200:
+                return jsonify({'success': True, 'data': resp_media.json(), 'mediaSent': True})
 
-    return jsonify({'success': False, 'error': 'API Gateway unconfigured'}), 400
+        # 2. Fallback to text message
+        url_msg = f"https://api.green-api.com/waInstance{instance_id}/sendMessage/{token}"
+        payload_msg = {
+            "chatId": f"{clean_phone}@c.us",
+            "message": message
+        }
+        resp_msg = requests.post(url_msg, json=payload_msg, timeout=10)
+        if resp_msg.status_code == 200:
+            return jsonify({'success': True, 'data': resp_msg.json(), 'mediaSent': False})
+        else:
+            return jsonify({'success': False, 'error': f"Green-API response ({resp_msg.status_code}): {resp_msg.text}"}), resp_msg.status_code
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     print("Starting WhatsApp Gateway Microservice on http://localhost:5000")

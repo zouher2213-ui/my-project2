@@ -1273,27 +1273,44 @@ document.addEventListener('DOMContentLoaded', () => {
       const ticketImages = currentWhatsAppTicket.imageUrls || (currentWhatsAppTicket.imageUrl ? [currentWhatsAppTicket.imageUrl] : []);
       const primaryImageUrl = ticketImages.length > 0 ? ticketImages[0] : '';
 
+      const instId = document.getElementById('waInstanceIdInput')?.value.trim() || localStorage.getItem('gulfmakers_wa_instance_id') || '';
+      const tokVal = document.getElementById('waTokenInput')?.value.trim() || localStorage.getItem('gulfmakers_wa_token') || '';
+
+      if (!instId || !tokVal) {
+        showToast(isAr ? 'يرجى إدخال الـ Instance ID والـ Token واقتران الـ QR Code أولاً!' : 'Please enter Instance ID & Token and scan QR code first!', 'error');
+        sendWhatsAppBtn.disabled = false;
+        sendWhatsAppBtn.innerHTML = originalHtml;
+        return;
+      }
+
+      let lastErrorMsg = '';
       try {
         const resp = await fetch('http://localhost:5000/send-whatsapp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            instanceId: instId,
+            token: tokVal,
             phone: cleanPhone,
             message: messageText,
             imageUrl: primaryImageUrl
           })
         });
 
-        if (resp.ok) {
-          const resData = await resp.json();
-          if (resData.success) {
-            sentSuccess = true;
-            showToast(isAr ? 'تم إرسال الرسالة والصور بنجاح إلى واتساب الفني في الخلفية!' : 'Direct WhatsApp message & photo sent successfully!', 'success');
-            closeModal('whatsappModal');
-          }
+        const resData = await resp.json();
+        if (resp.ok && resData.success) {
+          sentSuccess = true;
+          const successMsg = resData.mediaSent
+            ? (isAr ? 'تم إرسال الرسالة وصورة المشكلة بنجاح إلى واتساب الفني في الخلفية!' : 'Direct WhatsApp message & photo sent!')
+            : (isAr ? 'تم إرسال الرسالة بنجاح إلى واتساب الفني في الخلفية!' : 'Direct WhatsApp message sent!');
+          showToast(successMsg, 'success');
+          closeModal('whatsappModal');
+        } else {
+          lastErrorMsg = resData.error || (isAr ? 'خطأ في الاستجابة من بوابة الواتس' : 'WhatsApp Gateway Error');
         }
       } catch(err) {
         console.warn('Local WhatsApp Microservice offline or error:', err);
+        lastErrorMsg = isAr ? 'تعذر الاتصال بسيرفر الواتساب الخفي (Port 5000)' : 'Could not connect to WhatsApp Server';
       }
 
       // If local gateway failed or unconfigured, try custom gateway URL if set
@@ -1326,7 +1343,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // If direct background API send failed, show explicit error toast without popping up web links
       if (!sentSuccess) {
-        showToast(isAr ? 'تعذر الإرسال المباشر! يرجى إدخال الـ Instance ID والـ Token ومسح الـ QR Code أولاً' : 'Direct API send failed. Please link QR code first.', 'error');
+        showToast(lastErrorMsg || (isAr ? 'تعذر الإرسال المباشر! يرجى التأكد من اقتران الـ QR Code أولاً' : 'Direct API send failed. Please link QR code first.'), 'error');
       }
 
       sendWhatsAppBtn.disabled = false;
@@ -1635,11 +1652,7 @@ window.updateWhatsAppMessagePreview = function() {
   text += `📝 *وصف المشكلة:* \n${t.issueDescription}\n\n`;
 
   if (images.length > 0) {
-    text += `🖼️ *صور ومرفقات المشكلة (عدد ${toEnglishDigits(images.length)}):*\n`;
-    images.forEach((imgUrl, i) => {
-      text += `📷 *رابط الصورة (${toEnglishDigits(i + 1)}):* ${imgUrl}\n`;
-    });
-    text += `\n`;
+    text += `🖼️ *المرفقات والصور:* يوجد عدد (${toEnglishDigits(images.length)}) صورة مرفقة للمشكلة (تُرسل تلقائياً كميديا مع الرسالة).\n`;
   }
   text += `----------------------------------\n`;
   text += `مطلوب المعاينة والتواصل والبدء في الصيانة فوراً.`;
