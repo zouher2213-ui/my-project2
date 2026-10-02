@@ -1129,6 +1129,20 @@ html[dir="rtl"] .hud-toast {
   to { transform: translateY(0); opacity: 1; }
 }
 
+/* WhatsApp Technician Button Styling */
+.btn-whatsapp-action {
+  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+  color: white !important;
+  border: none;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+.btn-whatsapp-action:hover {
+  background: linear-gradient(135deg, #20BA5A 0%, #0E7569 100%);
+  box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+  transform: translateY(-1px);
+}
+
 /* Helpers */
 .hidden { display: none !important; }
 .tab-content { display: none; }

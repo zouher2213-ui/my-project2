@@ -110,7 +110,16 @@ window.GulfmakersI18n = {
       btn_edit_status: "تحديث الحالة",
       modal_edit_title: "تحديث حالة الطلب والتعليقات الفنية",
       label_tech_notes: "ملاحظات الفني / الإدارة للعميل",
-      btn_save_changes: "حفظ التغييرات"
+      btn_save_changes: "حفظ التغييرات",
+      
+      // WhatsApp Technician Dispatch
+      btn_whatsapp: "واتساب الفني",
+      modal_whatsapp_title: "إرسال تفاصيل وصورة المشكلة للفني عبر الواتساب",
+      label_select_technician: "اختر الفني المسؤول عن الصيانة",
+      label_custom_tech_name: "اسم الفني المخصص",
+      label_custom_tech_phone: "رقم الواتساب للفني (مع كود الدولة)",
+      label_msg_preview: "معاينة نص الرسالة التي سيتم فتحها بالواتساب",
+      btn_send_whatsapp: "فتح واتساب وإرسال البيانات"
     },
 
     en: {
@@ -215,7 +224,16 @@ window.GulfmakersI18n = {
       btn_edit_status: "Update Status",
       modal_edit_title: "Update Ticket Status & Tech Notes",
       label_tech_notes: "Technician Notes / Response",
-      btn_save_changes: "Save Changes"
+      btn_save_changes: "Save Changes",
+      
+      // WhatsApp Technician Dispatch
+      btn_whatsapp: "WhatsApp Tech",
+      modal_whatsapp_title: "Dispatch Issue Details & Photo to Tech via WhatsApp",
+      label_select_technician: "Select Assigned Technician",
+      label_custom_tech_name: "Custom Technician Name",
+      label_custom_tech_phone: "Technician WhatsApp Number (with country code)",
+      label_msg_preview: "Preview WhatsApp Message Text",
+      btn_send_whatsapp: "Open WhatsApp & Send Data"
     }
   },
   

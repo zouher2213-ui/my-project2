@@ -478,6 +478,13 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           </div>
         ` : ''}
+
+        <!-- WhatsApp Technician Dispatch Button -->
+        <div style="margin-top:20px; display:flex; justify-content:flex-end;">
+          <button class="hud-btn-outline" style="border-color:#25D366; color:#25D366; font-weight:bold; font-size:0.88rem; padding:8px 16px;" onclick="openWhatsAppModal('${ticket.id}')">
+            <i class="fa-brands fa-whatsapp" style="font-size:1.15rem; margin-inline-end:6px;"></i> ${dict.btn_whatsapp || 'إرسال للفني عبر الواتساب'}
+          </button>
+        </div>
       </div>
     `;
   }
@@ -943,6 +950,9 @@ document.addEventListener('DOMContentLoaded', () => {
           </td>
           <td>
             <div class="action-btn-group" style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button class="hud-btn-outline" style="padding:4px 8px; font-size:0.8rem; border-color:#25D366; color:#25D366;" onclick="openWhatsAppModal('${t.id}')" title="إرسال تفاصيل وصور المشكلة للفني عبر الواتس">
+                <i class="fa-brands fa-whatsapp"></i> الواتس
+              </button>
               <button class="hud-btn-outline" style="padding:4px 8px; font-size:0.8rem; border-color:#06B6D4; color:#06B6D4;" onclick="openTicketImagesModal('${t.id}')" title="عرض وتكبير الصور المرفقة">
                 <i class="fa-solid fa-image"></i> الصور (${(t.imageUrls || (t.imageUrl ? [t.imageUrl] : [])).length})
               </button>
@@ -1027,6 +1037,59 @@ document.addEventListener('DOMContentLoaded', () => {
           searchAndRenderTicket(activeCode);
         }
       }
+    });
+  }
+
+  // WhatsApp Technician Dispatch Listeners
+  const techSelect = document.getElementById('whatsappTechSelect');
+  const customName = document.getElementById('customTechName');
+  const customPhone = document.getElementById('customTechPhone');
+  const sendWhatsAppBtn = document.getElementById('sendWhatsAppBtn');
+
+  if (techSelect) {
+    techSelect.addEventListener('change', updateWhatsAppMessagePreview);
+  }
+  if (customName) {
+    customName.addEventListener('input', updateWhatsAppMessagePreview);
+  }
+  if (customPhone) {
+    customPhone.addEventListener('input', updateWhatsAppMessagePreview);
+  }
+
+  if (sendWhatsAppBtn) {
+    sendWhatsAppBtn.addEventListener('click', () => {
+      if (!currentWhatsAppTicket) return;
+
+      let rawPhone = '';
+      if (techSelect && techSelect.value === 'custom') {
+        rawPhone = customPhone ? customPhone.value.trim() : '';
+      } else if (techSelect) {
+        rawPhone = techSelect.value;
+      }
+
+      if (!rawPhone) {
+        const isAr = window.GulfmakersI18n.getLanguage() === 'ar';
+        showToast(isAr ? 'يرجى اختيار فني أو إدخال رقم الواتساب للفني' : 'Please select or enter technician WhatsApp number', 'error');
+        return;
+      }
+
+      // Format clean international digits (e.g. 0501234567 -> 966501234567)
+      let cleanPhone = toEnglishDigits(rawPhone).replace(/\D/g, '');
+      if (cleanPhone.startsWith('05')) {
+        cleanPhone = '966' + cleanPhone.slice(1);
+      } else if (cleanPhone.startsWith('5') && cleanPhone.length === 9) {
+        cleanPhone = '966' + cleanPhone;
+      }
+
+      const msgPreview = document.getElementById('whatsappMessagePreview');
+      const messageText = msgPreview ? msgPreview.value : '';
+
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(messageText)}`;
+      window.open(whatsappUrl, '_blank');
+
+      const isAr = window.GulfmakersI18n.getLanguage() === 'ar';
+      showToast(isAr ? 'تم فتح تطبيق/موقع الواتساب وتوجيه البيانات للفني!' : 'WhatsApp opened with technician details!', 'success');
+      closeModal('whatsappModal');
     });
   }
 });
@@ -1171,3 +1234,125 @@ function showToast(message, type = 'info') {
   container.appendChild(toast);
   setTimeout(() => toast.remove(), 4000);
 }
+
+// 9. WhatsApp Technician Dispatch Engine
+let currentWhatsAppTicket = null;
+
+const DEFAULT_TECHNICIANS = [
+  { name: 'م. أحمد (فني تكييف وتبريد)', phone: '966501234567' },
+  { name: 'م. خالد (فني كهرباء ولوحات)', phone: '966551234567' },
+  { name: 'م. محمود (فني سباكة وأنظمة مياه)', phone: '966541234567' },
+  { name: 'م. علي (فني صيانة عامة)', phone: '966561234567' }
+];
+
+window.getTechniciansList = function() {
+  const data = localStorage.getItem('gulfmakers_technicians');
+  if (data) {
+    try { return JSON.parse(data); } catch(e){}
+  }
+  localStorage.setItem('gulfmakers_technicians', JSON.stringify(DEFAULT_TECHNICIANS));
+  return DEFAULT_TECHNICIANS;
+};
+
+window.openWhatsAppModal = async function(trackingId) {
+  let ticket = window.cachedTicketsMap ? window.cachedTicketsMap[trackingId] : null;
+  if (!ticket) {
+    const db = window.GulfmakersDB;
+    if (db) ticket = await db.getTicketByTrackingNumber(trackingId);
+  }
+  if (!ticket) {
+    const isAr = window.GulfmakersI18n.getLanguage() === 'ar';
+    showToast(isAr ? 'عذراً، تعذر العثور على بيانات الطلب' : 'Ticket data not found', 'error');
+    return;
+  }
+
+  currentWhatsAppTicket = ticket;
+  const modal = document.getElementById('whatsappModal');
+  const modalTicketId = document.getElementById('whatsappModalTicketId');
+  const ticketMetaSummary = document.getElementById('whatsappTicketMetaSummary');
+  const techSelect = document.getElementById('whatsappTechSelect');
+  const thumbGrid = document.getElementById('whatsappImagesThumbGrid');
+  const customContainer = document.getElementById('customTechContainer');
+
+  if (modalTicketId) modalTicketId.textContent = toEnglishDigits(ticket.id);
+
+  const images = ticket.imageUrls || (ticket.imageUrl ? [ticket.imageUrl] : []);
+
+  if (ticketMetaSummary) {
+    ticketMetaSummary.innerHTML = `
+      <div><strong>رقم الفسح:</strong> ${toEnglishDigits(ticket.fasahNumber)} | <strong>جوال العقد:</strong> ${toEnglishDigits(ticket.contractPhone)}</div>
+      <div style="margin-top:4px;"><strong>وصف المشكلة:</strong> ${ticket.issueDescription}</div>
+    `;
+  }
+
+  if (thumbGrid) {
+    if (images.length > 0) {
+      thumbGrid.classList.remove('hidden');
+      thumbGrid.innerHTML = images.map((img, i) => `
+        <div class="multi-image-card" style="height:55px; width:55px;">
+          <img src="${img}" alt="Photo ${toEnglishDigits(i+1)}">
+        </div>
+      `).join('');
+    } else {
+      thumbGrid.classList.add('hidden');
+    }
+  }
+
+  // Populate Technicians
+  const list = window.getTechniciansList();
+  if (techSelect) {
+    techSelect.innerHTML = list.map((t, idx) => `
+      <option value="${t.phone}" data-name="${t.name}">${t.name} (${toEnglishDigits(t.phone)})</option>
+    `).join('') + `<option value="custom">+ إضافة فني جديد / رقم مخصص</option>`;
+  }
+
+  if (customContainer) customContainer.classList.add('hidden');
+
+  window.updateWhatsAppMessagePreview();
+
+  if (modal) modal.classList.add('active');
+};
+
+window.updateWhatsAppMessagePreview = function() {
+  if (!currentWhatsAppTicket) return;
+  const techSelect = document.getElementById('whatsappTechSelect');
+  const customContainer = document.getElementById('customTechContainer');
+  const customName = document.getElementById('customTechName');
+  const customPhone = document.getElementById('customTechPhone');
+  const msgPreview = document.getElementById('whatsappMessagePreview');
+
+  let selectedTechName = '';
+  if (techSelect) {
+    if (techSelect.value === 'custom') {
+      if (customContainer) customContainer.classList.remove('hidden');
+      selectedTechName = customName && customName.value.trim() ? customName.value.trim() : 'الفني المختص';
+    } else {
+      if (customContainer) customContainer.classList.add('hidden');
+      const selectedOpt = techSelect.options[techSelect.selectedIndex];
+      selectedTechName = selectedOpt ? selectedOpt.getAttribute('data-name') : 'الفني المختص';
+    }
+  }
+
+  const t = currentWhatsAppTicket;
+  const images = t.imageUrls || (t.imageUrl ? [t.imageUrl] : []);
+
+  let text = `🛠️ *طلب صيانة جديد - شركة صناع الخليج*\n`;
+  text += `----------------------------------\n`;
+  text += `👨‍🔧 *الفني الموجه له:* ${selectedTechName}\n`;
+  text += `📌 *رقم التتبع:* ${toEnglishDigits(t.id)}\n`;
+  text += `📄 *رقم الفسح:* ${toEnglishDigits(t.fasahNumber)}\n`;
+  text += `📱 *جوال العقد:* ${toEnglishDigits(t.contractPhone)}\n`;
+  if (t.customerEmail) text += `✉️ *البريد:* ${t.customerEmail}\n`;
+  text += `📅 *تاريخ الطلب:* ${toEnglishDigits(new Date(t.createdAt).toLocaleDateString('en-GB'))}\n\n`;
+
+  text += `📝 *وصف المشكلة:* \n${t.issueDescription}\n\n`;
+
+  if (images.length > 0) {
+    text += `🖼️ *المرفقات والصور:* يوجد عدد (${toEnglishDigits(images.length)}) صورة مرفقة للمشكلة.\n`;
+  }
+  text += `----------------------------------\n`;
+  text += `مطلوب المعاينة والتواصل والبدء في الصيانة فوراً.`;
+
+  if (msgPreview) msgPreview.value = text;
+};
+
