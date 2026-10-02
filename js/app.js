@@ -1089,6 +1089,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const instanceId = document.getElementById('waInstanceIdInput')?.value.trim() || '';
       const token = document.getElementById('waTokenInput')?.value.trim() || '';
       
+      if (instanceId) localStorage.setItem('gulfmakers_wa_instance_id', instanceId);
+      if (token) localStorage.setItem('gulfmakers_wa_token', token);
+
       try {
         await fetch('http://localhost:5000/config', {
           method: 'POST',
@@ -1101,7 +1104,7 @@ document.addEventListener('DOMContentLoaded', () => {
         waQrCodeImg.src = `http://localhost:5000/qr?t=${Date.now()}`;
       }
       const isAr = window.GulfmakersI18n.getLanguage() === 'ar';
-      showToast(isAr ? 'تم تحديث رمز QR Code لربط الواتس!' : 'QR Code updated!', 'info');
+      showToast(isAr ? 'تم حفظ الحساب والتوكن وتحديث رمز QR Code!' : 'Credentials saved & QR Code updated!', 'success');
     });
   }
 
@@ -1321,12 +1324,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      // If all background APIs failed, fallback to opening WhatsApp URL
+      // If direct background API send failed, show explicit error toast without popping up web links
       if (!sentSuccess) {
-        const whatsappUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(messageText)}`;
-        window.open(whatsappUrl, '_blank');
-        showToast(isAr ? 'تم فتح تطبيق/موقع الواتساب وتوجيه البيانات للفني!' : 'WhatsApp opened with technician details!', 'success');
-        closeModal('whatsappModal');
+        showToast(isAr ? 'تعذر الإرسال المباشر! يرجى إدخال الـ Instance ID والـ Token ومسح الـ QR Code أولاً' : 'Direct API send failed. Please link QR code first.', 'error');
       }
 
       sendWhatsAppBtn.disabled = false;
@@ -1582,7 +1582,12 @@ window.openWhatsAppModal = async function(trackingId) {
   // Populate Technicians
   window.renderTechniciansListOptions();
 
-  // Populate Gateway inputs if available
+  // Populate Gateway & Instance inputs if available
+  const waInstInput = document.getElementById('waInstanceIdInput');
+  const waTokInput = document.getElementById('waTokenInput');
+  if (waInstInput) waInstInput.value = localStorage.getItem('gulfmakers_wa_instance_id') || '';
+  if (waTokInput) waTokInput.value = localStorage.getItem('gulfmakers_wa_token') || '';
+
   const gwUrlInput = document.getElementById('waGatewayUrlInput');
   const gwTokenInput = document.getElementById('waGatewayTokenInput');
   if (gwUrlInput) gwUrlInput.value = localStorage.getItem('gulfmakers_wa_gateway_url') || '';
