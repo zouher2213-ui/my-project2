@@ -118,8 +118,10 @@ window.GulfmakersI18n = {
       label_select_technician: "اختر الفني المسؤول عن الصيانة",
       label_custom_tech_name: "اسم الفني المخصص",
       label_custom_tech_phone: "رقم الواتساب للفني (مع كود الدولة)",
-      label_msg_preview: "معاينة نص الرسالة التي سيتم فتحها بالواتساب",
-      btn_send_whatsapp: "فتح واتساب وإرسال البيانات"
+      label_msg_preview: "معاينة نص الرسالة التي سيتم إرسالها للفني",
+      btn_send_whatsapp: "إرسال البيانات عبر الواتساب",
+      btn_delete_tech: "حذف الفني",
+      label_save_custom_tech: "حفظ هذا الفني في القائمة للاستخدام المستقبلي"
     },
 
     en: {
@@ -233,7 +235,9 @@ window.GulfmakersI18n = {
       label_custom_tech_name: "Custom Technician Name",
       label_custom_tech_phone: "Technician WhatsApp Number (with country code)",
       label_msg_preview: "Preview WhatsApp Message Text",
-      btn_send_whatsapp: "Open WhatsApp & Send Data"
+      btn_send_whatsapp: "Send Data via WhatsApp",
+      btn_delete_tech: "Delete Tech",
+      label_save_custom_tech: "Save technician to list for future use"
     }
   },
   

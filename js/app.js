@@ -1047,7 +1047,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const sendWhatsAppBtn = document.getElementById('sendWhatsAppBtn');
 
   if (techSelect) {
-    techSelect.addEventListener('change', updateWhatsAppMessagePreview);
+    techSelect.addEventListener('change', () => {
+      const deleteBtn = document.getElementById('deleteTechBtn');
+      if (deleteBtn) {
+        deleteBtn.style.display = (techSelect.value && techSelect.value !== 'custom') ? 'inline-flex' : 'none';
+      }
+      updateWhatsAppMessagePreview();
+    });
   }
   if (customName) {
     customName.addEventListener('input', updateWhatsAppMessagePreview);
@@ -1056,12 +1062,80 @@ document.addEventListener('DOMContentLoaded', () => {
     customPhone.addEventListener('input', updateWhatsAppMessagePreview);
   }
 
+  // Delete Tech Listener
+  const deleteTechBtn = document.getElementById('deleteTechBtn');
+  if (deleteTechBtn) {
+    deleteTechBtn.addEventListener('click', () => {
+      window.deleteSelectedTechnician();
+    });
+  }
+
+  // Toggle & QR Code Gateway Handlers
+  const toggleWaApiSettingsBtn = document.getElementById('toggleWaApiSettingsBtn');
+  const waApiSettingsPanel = document.getElementById('waApiSettingsPanel');
+  if (toggleWaApiSettingsBtn && waApiSettingsPanel) {
+    toggleWaApiSettingsBtn.addEventListener('click', () => {
+      waApiSettingsPanel.classList.toggle('hidden');
+    });
+  }
+
+  const loadWaQrCodeBtn = document.getElementById('loadWaQrCodeBtn');
+  const checkWaStatusBtn = document.getElementById('checkWaStatusBtn');
+  const waQrCodeImg = document.getElementById('waQrCodeImg');
+  const waQrStatusBadge = document.getElementById('waQrStatusBadge');
+
+  if (loadWaQrCodeBtn) {
+    loadWaQrCodeBtn.addEventListener('click', async () => {
+      const instanceId = document.getElementById('waInstanceIdInput')?.value.trim() || '';
+      const token = document.getElementById('waTokenInput')?.value.trim() || '';
+      
+      try {
+        await fetch('http://localhost:5000/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ instanceId, token })
+        });
+      } catch(e) {}
+
+      if (waQrCodeImg) {
+        waQrCodeImg.src = `http://localhost:5000/qr?t=${Date.now()}`;
+      }
+      const isAr = window.GulfmakersI18n.getLanguage() === 'ar';
+      showToast(isAr ? 'تم تحديث رمز QR Code لربط الواتس!' : 'QR Code updated!', 'info');
+    });
+  }
+
+  if (checkWaStatusBtn) {
+    checkWaStatusBtn.addEventListener('click', async () => {
+      try {
+        const res = await fetch('http://localhost:5000/status');
+        const data = await res.json();
+        const isAr = window.GulfmakersI18n.getLanguage() === 'ar';
+        if (data.authorized) {
+          if (waQrStatusBadge) {
+            waQrStatusBadge.innerHTML = `<span style="color:#10B981;">✅ تم ربط الحساب بنجاح! الإرسال المباشر مفعل الآن.</span>`;
+          }
+          showToast(isAr ? 'حساب الواتساب مرتبط وجاهز للإرسال المباشر!' : 'WhatsApp linked & ready!', 'success');
+        } else {
+          if (waQrStatusBadge) {
+            waQrStatusBadge.innerHTML = `⏳ لم يتم الربط بعد. افتح الواتساب بالجوال واقترن بالرمز الكودي.`;
+          }
+          showToast(isAr ? 'لم يتم ربط الحساب بعد' : 'Account not linked yet', 'error');
+        }
+      } catch(e) {
+        showToast('تعذر الاتصال بسيرفر الواتساب المحلي (Port 5000)', 'error');
+      }
+    });
+  }
+
   if (sendWhatsAppBtn) {
-    sendWhatsAppBtn.addEventListener('click', () => {
+    sendWhatsAppBtn.addEventListener('click', async () => {
       if (!currentWhatsAppTicket) return;
 
       let rawPhone = '';
-      if (techSelect && techSelect.value === 'custom') {
+      const isCustom = techSelect && techSelect.value === 'custom';
+
+      if (isCustom) {
         rawPhone = customPhone ? customPhone.value.trim() : '';
       } else if (techSelect) {
         rawPhone = techSelect.value;
@@ -1084,12 +1158,87 @@ document.addEventListener('DOMContentLoaded', () => {
       const msgPreview = document.getElementById('whatsappMessagePreview');
       const messageText = msgPreview ? msgPreview.value : '';
 
-      const whatsappUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(messageText)}`;
-      window.open(whatsappUrl, '_blank');
+      // Save custom tech if checkbox checked
+      const saveCheck = document.getElementById('saveCustomTechCheck');
+      if (isCustom && saveCheck && saveCheck.checked) {
+        const customTechNameVal = customName ? customName.value.trim() : '';
+        if (customTechNameVal && cleanPhone) {
+          let currentList = window.getTechniciansList();
+          if (!currentList.some(t => t.phone === cleanPhone)) {
+            currentList.push({ name: customTechNameVal, phone: cleanPhone });
+            localStorage.setItem('gulfmakers_technicians', JSON.stringify(currentList));
+            window.renderTechniciansListOptions();
+          }
+        }
+      }
 
       const isAr = window.GulfmakersI18n.getLanguage() === 'ar';
-      showToast(isAr ? 'تم فتح تطبيق/موقع الواتساب وتوجيه البيانات للفني!' : 'WhatsApp opened with technician details!', 'success');
-      closeModal('whatsappModal');
+      sendWhatsAppBtn.disabled = true;
+      const originalHtml = sendWhatsAppBtn.innerHTML;
+      sendWhatsAppBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${isAr ? 'جاري الإرسال المباشر...' : 'Sending via API...'}`;
+
+      // Try Local Python Microservice first (Port 5000)
+      let sentSuccess = false;
+      try {
+        const resp = await fetch('http://localhost:5000/send-whatsapp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: cleanPhone,
+            message: messageText
+          })
+        });
+
+        if (resp.ok) {
+          const resData = await resp.json();
+          if (resData.success) {
+            sentSuccess = true;
+            showToast(isAr ? 'تم إرسال الرسالة بنجاح إلى واتساب الفني في الخلفية!' : 'Direct WhatsApp message sent successfully!', 'success');
+            closeModal('whatsappModal');
+          }
+        }
+      } catch(err) {
+        console.warn('Local WhatsApp Microservice offline or error:', err);
+      }
+
+      // If local gateway failed or unconfigured, try custom gateway URL if set
+      if (!sentSuccess) {
+        const gatewayUrl = localStorage.getItem('gulfmakers_wa_gateway_url');
+        const gatewayToken = localStorage.getItem('gulfmakers_wa_gateway_token');
+
+        if (gatewayUrl) {
+          try {
+            const resp = await fetch(gatewayUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                token: gatewayToken,
+                to: cleanPhone,
+                phone: cleanPhone,
+                body: messageText,
+                message: messageText
+              })
+            });
+
+            if (resp.ok) {
+              sentSuccess = true;
+              showToast(isAr ? 'تم إرسال الرسالة بنجاح إلى واتساب الفني!' : 'Direct WhatsApp message sent!', 'success');
+              closeModal('whatsappModal');
+            }
+          } catch(err) {}
+        }
+      }
+
+      // If all background APIs failed, fallback to opening WhatsApp URL
+      if (!sentSuccess) {
+        const whatsappUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(messageText)}`;
+        window.open(whatsappUrl, '_blank');
+        showToast(isAr ? 'تم فتح تطبيق/موقع الواتساب وتوجيه البيانات للفني!' : 'WhatsApp opened with technician details!', 'success');
+        closeModal('whatsappModal');
+      }
+
+      sendWhatsAppBtn.disabled = false;
+      sendWhatsAppBtn.innerHTML = originalHtml;
     });
   }
 });
@@ -1254,6 +1403,47 @@ window.getTechniciansList = function() {
   return DEFAULT_TECHNICIANS;
 };
 
+window.renderTechniciansListOptions = function() {
+  const techSelect = document.getElementById('whatsappTechSelect');
+  const deleteBtn = document.getElementById('deleteTechBtn');
+  if (!techSelect) return;
+
+  const list = window.getTechniciansList();
+  techSelect.innerHTML = list.map((t) => `
+    <option value="${t.phone}" data-name="${t.name}">${t.name} (${toEnglishDigits(t.phone)})</option>
+  `).join('') + `<option value="custom">+ إضافة فني جديد / رقم مخصص</option>`;
+
+  if (deleteBtn) {
+    deleteBtn.style.display = (techSelect.value && techSelect.value !== 'custom') ? 'inline-flex' : 'none';
+  }
+};
+
+window.deleteSelectedTechnician = function() {
+  const techSelect = document.getElementById('whatsappTechSelect');
+  if (!techSelect || techSelect.value === 'custom') return;
+
+  const selectedPhone = techSelect.value;
+  let list = window.getTechniciansList();
+  const targetTech = list.find(t => t.phone === selectedPhone);
+
+  if (!targetTech) return;
+
+  const isAr = window.GulfmakersI18n ? window.GulfmakersI18n.getLanguage() === 'ar' : true;
+  const confirmMsg = isAr 
+    ? `هل أنت تأكد من رغبتك في حذف الفني "${targetTech.name}" من القائمة؟`
+    : `Are you sure you want to delete technician "${targetTech.name}"?`;
+
+  if (!confirm(confirmMsg)) return;
+
+  list = list.filter(t => t.phone !== selectedPhone);
+  localStorage.setItem('gulfmakers_technicians', JSON.stringify(list));
+
+  showToast(isAr ? `تم حذف الفني "${targetTech.name}" بنجاح` : `Technician deleted successfully`, 'success');
+
+  window.renderTechniciansListOptions();
+  window.updateWhatsAppMessagePreview();
+};
+
 window.openWhatsAppModal = async function(trackingId) {
   let ticket = window.cachedTicketsMap ? window.cachedTicketsMap[trackingId] : null;
   if (!ticket) {
@@ -1270,7 +1460,6 @@ window.openWhatsAppModal = async function(trackingId) {
   const modal = document.getElementById('whatsappModal');
   const modalTicketId = document.getElementById('whatsappModalTicketId');
   const ticketMetaSummary = document.getElementById('whatsappTicketMetaSummary');
-  const techSelect = document.getElementById('whatsappTechSelect');
   const thumbGrid = document.getElementById('whatsappImagesThumbGrid');
   const customContainer = document.getElementById('customTechContainer');
 
@@ -1299,12 +1488,13 @@ window.openWhatsAppModal = async function(trackingId) {
   }
 
   // Populate Technicians
-  const list = window.getTechniciansList();
-  if (techSelect) {
-    techSelect.innerHTML = list.map((t, idx) => `
-      <option value="${t.phone}" data-name="${t.name}">${t.name} (${toEnglishDigits(t.phone)})</option>
-    `).join('') + `<option value="custom">+ إضافة فني جديد / رقم مخصص</option>`;
-  }
+  window.renderTechniciansListOptions();
+
+  // Populate Gateway inputs if available
+  const gwUrlInput = document.getElementById('waGatewayUrlInput');
+  const gwTokenInput = document.getElementById('waGatewayTokenInput');
+  if (gwUrlInput) gwUrlInput.value = localStorage.getItem('gulfmakers_wa_gateway_url') || '';
+  if (gwTokenInput) gwTokenInput.value = localStorage.getItem('gulfmakers_wa_gateway_token') || '';
 
   if (customContainer) customContainer.classList.add('hidden');
 
